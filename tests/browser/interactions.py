@@ -75,7 +75,7 @@ def run(page, check, engine):
     check(names == ["Sam", "Jo", "Pat"], f"three names are listed {names}")
     check(text(page, "#banner") == "Demo with made-up data", "the demo says it is a demo")
     check(text(page, "#hero h2") == "Reach 50 inches.", "the first screen's headline")
-    check(text(page, ".side.before .target") == "20 inches" and text(page, ".side.after .target") == "50 inches", "the two jump heights are labelled in inches")
+    check(text(page, ".side.before .inches") == "20 inches" and text(page, ".side.after .inches") == "50 inches", "the two jump heights are labelled in inches")
     check(len(page.query_selector_all(".lines p")) == 3, "three motivating lines")
     still = page.evaluate("() => getComputedStyle(document.querySelector('.side.after .jumper')).transform")
     page.wait_for_function(
@@ -91,6 +91,17 @@ def run(page, check, engine):
     check(text(page, "#session-c1-1-1 h2") == "Lift", "the session kind is a text label")
     weight = text(page, "[data-row='session-c1-1-1-b1-weight']")
     check("230 lb" in weight and "305 lb" in weight, f"305 at 75% shows 230 beside the max {weight!r}")
+    cats = page.evaluate(
+        """() => [...document.querySelectorAll("#session-c1-1-1 li[data-category] > .row-head .tag")]
+              .map(t => t.textContent + ":" + t.parentElement.parentElement.dataset.category)"""
+    )
+    check(cats == ["Strength:strength", "Accessory:accessory", "Accessory:accessory", "Calf:calf"], f"each lift block has its category as a word and a colour key {cats}")
+    colours = page.evaluate(
+        """() => ["power", "strength", "calf", "accessory", "isometric"].map(c => {
+              const probe = document.createElement("span"); probe.dataset.category = c; probe.className = "chip";
+              document.body.append(probe); const bg = getComputedStyle(probe).backgroundColor; probe.remove(); return bg; })"""
+    )
+    check(len(set(colours)) == 5, f"the five categories have five different colours {colours}")
     check(
         text(page, "[data-row='session-c1-1-1-b1-note'] blockquote") == "Slow down, fast up.",
         "the coach's note is shown word for word",
@@ -143,6 +154,9 @@ def run(page, check, engine):
     page.click("#session-c1-1-1 button:text-is('Put it back')")
     nav(page, "Week")
     check(page.query_selector("[data-row='day-2026-12-01'] .marker") is None, "undoing a move clears the markers")
+    day_chips = [text(page, f"[data-row='day-2026-12-01'] .chip:nth-child({n})") for n in (1, 2, 3)]
+    check(day_chips == ["Strength", "Calf", "Accessory"], f"the week shows each day's categories {day_chips}")
+    check(len(page.query_selector_all("#legend .chip")) == 5, "the week has a colour key with five categories")
 
     # --- maxes ---
     nav(page, "Maxes")

@@ -11,33 +11,45 @@
  "lifts": {
   "anvil_squat": {
    "name": "Anvil Squat",
-   "tracks_max": true
+   "tracks_max": true,
+   "category": "strength"
   },
   "rope_clean": {
    "name": "Rope Clean",
-   "tracks_max": true
+   "tracks_max": true,
+   "category": "power"
   },
   "rope_hang_clean": {
    "name": "Hang Rope Clean",
-   "max_from": "rope_clean"
+   "max_from": "rope_clean",
+   "category": "power"
   },
   "stone_press": {
    "name": "Stone Press",
-   "tracks_max": true
+   "tracks_max": true,
+   "category": "accessory"
   },
   "kettle_hinge": {
    "name": "Kettle Hinge",
-   "tracks_max": true
+   "tracks_max": true,
+   "category": "strength"
   },
   "kettle_single": {
    "name": "Single Kettle Hinge",
-   "max_from": "kettle_hinge"
+   "max_from": "kettle_hinge",
+   "category": "accessory"
   },
   "river_hold": {
-   "name": "River Hold"
+   "name": "River Hold",
+   "category": "calf"
   },
   "lantern_drop": {
-   "name": "Lantern Drop"
+   "name": "Lantern Drop",
+   "category": "accessory"
+  },
+  "pillar_raise": {
+   "name": "Pillar Raise",
+   "category": "calf"
   }
  },
  "maxes_from_pdf": {
@@ -176,6 +188,12 @@
           "of": "kettle_single"
          },
          "note": "Hips back."
+        },
+        {
+         "lift": "pillar_raise",
+         "sets": 3,
+         "reps": 12,
+         "note": "Pause at the top."
         }
        ]
       },

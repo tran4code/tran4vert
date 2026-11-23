@@ -224,5 +224,11 @@
   "avatar_text": "Choose a picture from this phone, up to {kb} KB. It shows on the first screen to anyone with the link.",
   "avatar_athlete": "Whose picture",
   "err_avatar": "That picture is empty or over {kb} KB. Pick a smaller one.",
-  "page_avatar_choose": "Choose a picture"
+  "page_avatar_choose": "Choose a picture",
+  "cat_power": "Power",
+  "cat_strength": "Strength",
+  "cat_calf": "Calf",
+  "cat_accessory": "Accessory",
+  "cat_isometric": "Isometric",
+  "legend_heading": "Colour key"
 }

@@ -36,6 +36,8 @@ One row per assumption, surprise or open item. **Kind** is *divergence* (what wa
 | R2.19 | finding | A photo the person supplied can be an athlete's profile picture. | It is a press photograph of a named real person, and the repository and the site are public. The agent cannot check its rights and did not copy it anywhere. | Built a picture upload instead: the coach (or an athlete, for themselves) chooses a file, up to 300 KB, and it is stored in the person's own database, not in git. The person uploads it, and the rights are theirs to judge. | `screens.rs` (size and who may change); `schema.sql` | person |
 | R2.20 | divergence | Names are public (R2.17). | Pictures are public too: the first screen shows them to anyone with the link, so `get_avatar` takes no sign-in. | Said to the person in the same message; `schema.sql` comments say it. | `live_mock.py` (a picture is fetched without a sign-in) | done |
 | R2.21 | worklist | The database has the picture columns. | Not until the person runs `supabase/schema.sql` again (it keeps the data). Until then the page works and shows initials, and an upload fails. | | | person |
+| R2.22 | worklist | Each lift has a category (power, strength, calf, accessory); a held block is isometric. | The program file did not say. The agent assigned each lift in `private/program/program.json` by its name: cleans, depth landing and the jump session as power; squats, Romanian deadlifts and the leg press as strength; the calf raises as calf; the Nordic and the cable abduction as accessory. The calf isometric lift is calf in the file and shows as isometric because its blocks are holds. | The page colours each category and always says it in words. The person corrects any lift in the file and runs `tools/seed.py` again. | `program.rs`, `screens.rs` | person |
+| R2.23 | worklist | The new categories reach the live page. | They are in the local program file only until the person runs `python3.13 tools/seed.py` again. | | | person |
 
 ## Strings written by the agent
 
@@ -268,3 +270,9 @@ Each reader-visible string the agent wrote, with its key, for the person to read
 | `avatar_athlete` | Whose picture |
 | `err_avatar` | That picture is empty or over {kb} KB. Pick a smaller one. |
 | `page_avatar_choose` | Choose a picture |
+| `cat_power` | Power |
+| `cat_strength` | Strength |
+| `cat_calf` | Calf |
+| `cat_accessory` | Accessory |
+| `cat_isometric` | Isometric |
+| `legend_heading` | Colour key |

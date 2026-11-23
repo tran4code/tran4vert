@@ -20,6 +20,12 @@ One of the people following the program, who signs in by tapping their name. Eac
 
 Not: user, client, member
 
+### Category
+
+The group a lift belongs to: power, strength, calf, accessory or isometric. Each has its own colour and its own word, so the colour is never the only cue.
+
+Not: classification, tier
+
 ### Coach
 
 The person who sets the program and records voice notes, and who is also an athlete. The coach can move any athlete's session.

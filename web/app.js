@@ -180,11 +180,13 @@ function heroNode(p) {
     fig.className = "side " + side;
     const scene = make("div");
     scene.className = "scene";
-    const target = make("span", row.detail);
+    const target = make("span");
     target.className = "target";
     scene.append(target, jumper());
     const cap = make("figcaption");
-    cap.append(make("strong", row.label));
+    const inches = make("span", row.detail);
+    inches.className = "inches";
+    cap.append(make("strong", row.label), inches);
     fig.append(scene, cap);
     stage.append(fig);
   });
@@ -213,14 +215,33 @@ function avatarPanelNode(p, box) {
   return wrap;
 }
 
+// The categories a day holds, each its own colour and its own word.
+function chipsNode(chips) {
+  const box = make("div");
+  box.className = "chips";
+  chips.forEach((c) => {
+    const chip = make("span", c.label);
+    chip.className = "chip";
+    chip.dataset.category = c.value;
+    box.append(chip);
+  });
+  return box;
+}
+
+function legendNode(p) {
+  return chipsNode(p.rows.map((r) => ({ value: r.category, label: r.label })));
+}
+
 function rowNode(r) {
   const li = make("li");
   li.dataset.row = r.id;
+  if (r.category) li.dataset.category = r.category;
   const head = make("div");
   head.className = "row-head";
   if (r.tag) {
     const tag = make("span", r.tag);
     tag.className = "tag";
+    if (r.category) tag.dataset.category = r.category;
     head.append(tag);
   }
   if (r.label) head.append(make("strong", r.label));
@@ -230,6 +251,7 @@ function rowNode(r) {
     head.append(m);
   }
   const body = make("div");
+  if ((r.chips || []).length) body.append(chipsNode(r.chips));
   if (r.detail) {
     const d = make("p", r.detail);
     d.className = "detail";
@@ -282,6 +304,11 @@ function panel(p) {
   }
   if (p.kind === "avatar") {
     box.append(avatarPanelNode(p, box));
+    return box;
+  }
+  if (p.kind === "legend") {
+    if (p.heading) box.replaceChildren(make("h2", p.heading));
+    box.append(legendNode(p));
     return box;
   }
   if (p.kind === "people") {

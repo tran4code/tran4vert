@@ -75,6 +75,8 @@ Set `DEVELOPER_DIR=/Library/Developer/CommandLineTools` first if the Xcode licen
 | R2.18 | Run `supabase/schema.sql` again in the SQL editor, give each athlete their goal with `update athletes set goal = 40 where name = '...'`, and run `tools/remote_check.py`; the new page is not published until then |
 | R2.19 | Upload the picture yourself (Coach screen, up to 300 KB); the agent did not use the pasted press photo, whose rights are yours to judge |
 | R2.21 | Run `supabase/schema.sql` again for the picture columns |
+| R2.22 | Check the category given to each lift in `private/program/program.json`; change any that are wrong |
+| R2.23 | Run `python3.13 tools/seed.py` again so the categories reach the live page |
 | R2.14 | Read the agent-written strings at the foot of `SECOND-ORDER.md` |
 | R2.16 | Which max the cycle 2 squat percentage refers to |
 

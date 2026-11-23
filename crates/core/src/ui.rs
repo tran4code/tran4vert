@@ -91,6 +91,12 @@ pub struct Row {
     pub rows: Vec<Row>,
     /// Whether the rows under this one start shown.
     pub open: bool,
+    /// The lift category the row belongs to (`power`, `strength`, ...); the page colours it and its tag says it in words.
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub category: String,
+    /// The categories a day holds, as (key, label) pairs, for the week screen.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub chips: Vec<Choice>,
     /// The athlete whose picture goes with this row, when there is one.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub avatar: Option<u64>,

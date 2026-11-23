@@ -12,7 +12,7 @@ use crate::maxes;
 use crate::moves::{self, DayView, Empty, Entry};
 use crate::notes;
 use crate::page::Strings;
-use crate::program::{Block, BlockKind, Cycle, LibraryItem};
+use crate::program::{Block, BlockKind, Cycle, LibraryItem, CATEGORIES};
 use crate::schedule::{self, CYCLE_WEEKS};
 use crate::ui::{Action, Choice, Field, Header, NavItem, Panel, Row};
 
@@ -341,6 +341,10 @@ fn lift_row(ctx: &Ctx, cycle: &Cycle, block: &Block, id: &str, date: i64) -> Row
     let mut row = Row::new(id, &ctx.data.program.lift_name(&lift));
     row.detail = prescription(ctx, block);
     row.open = true;
+    if let Some(cat) = ctx.data.program.block_category(block) {
+        row.category = cat.to_string();
+        row.tag = s.t(&format!("cat_{cat}"));
+    }
     row.actions = vec![Action::new("lift.show", &lift, &s.t("lift_open"))];
     if let Some(p) = &block.pct {
         let of_name = ctx.data.program.lift_name(ctx.data.program.max_lift(&p.of));
@@ -417,7 +421,14 @@ fn block_row(ctx: &Ctx, cycle: &Cycle, block: &Block, id: &str, date: i64) -> Ro
         Some(BlockKind::Ref) => {
             let key = block.reference.clone().unwrap_or_default();
             match ctx.data.program.library.get(&key) {
-                Some(item) => library_row(ctx, id, item, block.dose.as_deref()),
+                Some(item) => {
+                    let mut row = library_row(ctx, id, item, block.dose.as_deref());
+                    if let Some(cat) = ctx.data.program.block_category(block) {
+                        row.category = cat.to_string();
+                        row.tag = s.t(&format!("cat_{cat}"));
+                    }
+                    row
+                }
                 None => Row::new(id, &key),
             }
         }
@@ -646,6 +657,22 @@ pub fn week(ctx: &Ctx) -> (String, Vec<Panel>) {
                 _ => ctx.kind_label("rest"),
             };
         }
+        // The categories the day holds, in the fixed order, each as a coloured word.
+        let held: Vec<&str> = view
+            .entries
+            .iter()
+            .filter_map(|e| match e {
+                Entry::Session { slot, .. } => Some(slot),
+                Entry::MovedOut { .. } => None,
+            })
+            .flat_map(|slot| slot.day.blocks.iter())
+            .filter_map(|b| ctx.data.program.block_category(b))
+            .collect();
+        row.chips = CATEGORIES
+            .iter()
+            .filter(|c| held.contains(c))
+            .map(|c| choice(c, &s.t(&format!("cat_{c}"))))
+            .collect();
         row.detail = names.join(", ");
         if date == ctx.today {
             row.note = String::new();
@@ -664,7 +691,13 @@ pub fn week(ctx: &Ctx) -> (String, Vec<Panel>) {
         Action::new("week.shift", "0", &s.t("week_this")),
         Action::new("week.shift", "1", &s.t("week_later")),
     ];
-    (title, vec![nav, list])
+    let mut legend = Panel::new("legend", "legend").heading(&s.t("legend_heading"));
+    for c in CATEGORIES {
+        let mut r = Row::new(&format!("legend-{c}"), &s.t(&format!("cat_{c}")));
+        r.category = c.to_string();
+        legend.rows.push(r);
+    }
+    (title, vec![nav, list, legend])
 }
 
 // ---- a lift ----

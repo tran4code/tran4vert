@@ -57,6 +57,9 @@ pub fn built_keys() -> Vec<String> {
     for k in KINDS {
         keys.push(format!("kind_{k}"));
     }
+    for c in crate::program::CATEGORIES {
+        keys.push(format!("cat_{c}"));
+    }
     keys
 }
 

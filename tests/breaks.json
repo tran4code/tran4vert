@@ -425,5 +425,33 @@
     "find": ".filter(|a| only.is_none_or(|id| id == a.id))",
     "replace": ".filter(|_| true)",
     "test": "the_picture_form_is_on_the_coach_screen_for_anyone_and_on_an_athletes_own_phone_for_them"
+  },
+  {
+    "name": "a held block takes its lift's category",
+    "file": "crates/core/src/program.rs",
+    "find": "        if block.hold {\n            return Some(\"isometric\");\n        }",
+    "replace": "        if block.hold && false {\n            return Some(\"isometric\");\n        }",
+    "test": "a_block_has_the_category_of_its_lift_and_a_held_block_is_isometric"
+  },
+  {
+    "name": "a library hold has no category",
+    "file": "crates/core/src/program.rs",
+    "find": "            if item.kind == \"hold\" {",
+    "replace": "            if item.kind == \"holdx\" {",
+    "test": "a_block_has_the_category_of_its_lift_and_a_held_block_is_isometric"
+  },
+  {
+    "name": "an unknown category is accepted",
+    "file": "crates/core/src/program.rs",
+    "find": "                if !CATEGORIES.contains(&c.as_str()) {",
+    "replace": "                if false {",
+    "test": "an_unknown_category_is_refused_by_name"
+  },
+  {
+    "name": "the week chips are in lift order",
+    "file": "crates/core/src/view.rs",
+    "find": "        row.chips = CATEGORIES\n            .iter()\n            .filter(|c| held.contains(c))",
+    "replace": "        row.chips = CATEGORIES\n            .iter()\n            .rev()\n            .filter(|c| held.contains(c))",
+    "test": "the_week_shows_the_categories_each_day_holds_in_a_fixed_order_and_a_colour_key"
   }
 ]

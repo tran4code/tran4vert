@@ -16,6 +16,9 @@ use serde::{Deserialize, Serialize};
 pub const DOW_KEYS: [&str; 7] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
 /// The session kinds a day may have.
 pub const KINDS: [&str; 5] = ["jump", "lift", "general", "iso", "rest"];
+/// The categories a lift can be in, in the order they are listed. A held lift
+/// (a block with `hold`) is isometric whatever its lift's category says.
+pub const CATEGORIES: [&str; 5] = ["power", "strength", "calf", "accessory", "isometric"];
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LiftDef {
@@ -24,6 +27,9 @@ pub struct LiftDef {
     pub tracks_max: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub max_from: Option<String>,
+    /// One of `CATEGORIES`; the page gives each its own colour and label.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub category: Option<String>,
 }
 
 /// A reusable block: a circuit, a check-in or a hold.
@@ -194,6 +200,23 @@ impl Program {
         }
     }
 
+    /// The category of a block: a held block is isometric; a lift block takes
+    /// its lift's category; a held library item is isometric; nothing else has one.
+    pub fn block_category(&self, block: &Block) -> Option<&str> {
+        if block.hold {
+            return Some("isometric");
+        }
+        if let Some(lift) = &block.lift {
+            return self.lifts.get(lift).and_then(|l| l.category.as_deref());
+        }
+        if let Some(item) = block.reference.as_ref().and_then(|r| self.library.get(r)) {
+            if item.kind == "hold" {
+                return Some("isometric");
+            }
+        }
+        None
+    }
+
     pub fn lift_name(&self, lift: &str) -> String {
         self.lifts
             .get(lift)
@@ -217,6 +240,13 @@ impl Program {
                     return Err(format!(
                         "Lift \"{id}\" takes its max from \"{from}\", which is not a lift."
                     ));
+                }
+            }
+        }
+        for (id, lift) in &self.lifts {
+            if let Some(c) = &lift.category {
+                if !CATEGORIES.contains(&c.as_str()) {
+                    return Err(format!("Lift \"{id}\" has the unknown category \"{c}\"."));
                 }
             }
         }
@@ -396,6 +426,30 @@ mod tests {
         assert!(e.contains("not a day of the week"), "{e}");
         let e = Program::parse(&with("\"kind\": \"iso\"", "\"kind\": \"nap\"")).unwrap_err();
         assert!(e.contains("not a session kind"), "{e}");
+    }
+
+    #[test]
+    fn a_block_has_the_category_of_its_lift_and_a_held_block_is_isometric() {
+        let p = Program::parse(SAMPLE).unwrap();
+        let mon = &p.cycles[0].weeks[0].days[0];
+        // Rope clean: power. Wake-up circuit: no category.
+        assert_eq!(p.block_category(&mon.blocks[2]), Some("power"));
+        assert_eq!(p.block_category(&mon.blocks[0]), None);
+        let tue = &p.cycles[0].weeks[0].days[1];
+        assert_eq!(p.block_category(&tue.blocks[1]), Some("strength"));
+        assert_eq!(p.block_category(&tue.blocks[2]), Some("accessory"));
+        assert_eq!(p.block_category(&tue.blocks[4]), Some("calf"));
+        // Friday: a lift that is held is isometric even though its lift says calf; the wall hold item too.
+        let fri = &p.cycles[0].weeks[0].days[4];
+        assert_eq!(p.block_category(&fri.blocks[2]), Some("isometric"));
+        let sat = &p.cycles[0].weeks[0].days[5];
+        assert_eq!(p.block_category(&sat.blocks[0]), Some("isometric"));
+    }
+
+    #[test]
+    fn an_unknown_category_is_refused_by_name() {
+        let e = Program::parse(&with("\"category\": \"power\"", "\"category\": \"speed\"")).unwrap_err();
+        assert!(e.contains("unknown category \"speed\""), "{e}");
     }
 
     #[test]

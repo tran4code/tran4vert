@@ -168,6 +168,61 @@ fn the_page_starts_with_no_names_and_asks_for_nothing_yet() {
 }
 
 #[test]
+fn each_lift_block_carries_its_category_as_a_word_and_a_held_block_is_isometric() {
+    let mut p = Page::signed_in("2026-12-01", "athlete", 1);
+    // Tuesday: squat (strength), stone press (accessory), pillar raise (calf).
+    for (id, cat, word) in [
+        ("session-c1-1-1-b1", "strength", "Strength"),
+        ("session-c1-1-1-b2", "accessory", "Accessory"),
+        ("session-c1-1-1-b4", "calf", "Calf"),
+    ] {
+        assert_eq!(p.row(id)["category"], cat, "{id}");
+        assert_eq!(p.row(id)["tag"], word, "{id}");
+    }
+    // The circuit has none.
+    assert!(p.row("session-c1-1-1-b0").get("category").is_none());
+    // Monday's rope clean is power; Friday's held lift is isometric although its lift says calf.
+    p.act("day.show", "2026-11-30");
+    assert_eq!(p.row("session-c1-1-0-b2")["category"], "power");
+    p.act("day.show", "2026-12-04");
+    assert_eq!(p.row("session-c1-1-4-b2")["category"], "isometric");
+    assert_eq!(p.row("session-c1-1-4-b2")["tag"], "Isometric");
+    // A library hold is isometric too.
+    p.act("day.show", "2026-12-05");
+    assert_eq!(p.row("session-c1-1-5-b0")["category"], "isometric");
+}
+
+#[test]
+fn the_week_shows_the_categories_each_day_holds_in_a_fixed_order_and_a_colour_key() {
+    let mut p = Page::signed_in("2026-12-02", "athlete", 1);
+    p.act("screen.show", "week");
+    let chips = |p: &Page, date: &str| -> Vec<String> {
+        p.row(&format!("day-{date}"))
+            .get("chips")
+            .and_then(|c| c.as_array())
+            .map(|c| c.iter().map(|x| s(&x["label"]).to_string()).collect())
+            .unwrap_or_default()
+    };
+    assert_eq!(chips(&p, "2026-11-30"), vec!["Power"]);
+    assert_eq!(chips(&p, "2026-12-01"), vec!["Strength", "Calf", "Accessory"]);
+    assert_eq!(chips(&p, "2026-12-02"), vec!["Isometric"]);
+    assert_eq!(chips(&p, "2026-12-03"), vec!["Accessory"]);
+    assert_eq!(chips(&p, "2026-12-04"), vec!["Strength", "Isometric"]);
+    assert_eq!(chips(&p, "2026-12-05"), vec!["Isometric"]);
+    assert!(chips(&p, "2026-12-06").is_empty());
+    // The first chip carries the key the page colours it by.
+    assert_eq!(p.row("day-2026-12-01")["chips"][0]["value"], "strength");
+    let key: Vec<&str> = p.panel("legend")["rows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|r| s(&r["label"]))
+        .collect();
+    assert_eq!(key, vec!["Power", "Strength", "Calf", "Accessory", "Isometric"]);
+    assert_eq!(p.row("legend-calf")["category"], "calf");
+}
+
+#[test]
 fn the_first_screen_has_a_motivating_message_two_jump_heights_and_a_tile_for_each_athlete() {
     let mut p = Page::open("2026-12-01");
     let names = r#"[{"id":1,"name":"Sam","avatar":true},{"id":2,"name":"Jo"},{"id":3,"name":"Pat"}]"#;
@@ -1279,6 +1334,7 @@ fn every_string_in_the_strings_file_is_used_by_the_core_or_the_page() {
             "rx_",
             "demo_athlete_",
             "hero_line_",
+            "cat_",
         ]
         .iter()
         .any(|p| key.starts_with(p))
