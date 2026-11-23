@@ -118,7 +118,7 @@ create or replace function public.set_passcode(p_kind text, p_code text)
 returns void language plpgsql security definer set search_path = public, extensions as $$
 begin
   if p_kind not in ('group', 'coach') then raise exception 'unknown kind'; end if;
-  if p_code is null or char_length(p_code) < 6 then raise exception 'use at least 6 characters'; end if;
+  if p_code is null or char_length(p_code) < 4 then raise exception 'use at least 4 characters'; end if;
   insert into public.secrets (name, hash) values (p_kind, crypt(p_code, gen_salt('bf')))
   on conflict (name) do update set hash = excluded.hash;
 end $$;

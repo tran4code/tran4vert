@@ -44,9 +44,9 @@ Each reader-visible string the agent wrote, with its key, for the person to read
 | `title_cycles` | Cycles |
 | `title_coach` | Coach |
 | `passcode_heading` | Group passcode |
-| `passcode_text` | Type the passcode the coach gave you. This phone remembers it. |
-| `passcode_group` | Passcode |
-| `passcode_coach` | Coach passcode (coach only) |
+| `passcode_text` | Type the group passcode. The coach can type the coach passcode alone. This phone remembers it. |
+| `passcode_group` | Group passcode |
+| `passcode_coach` | Coach passcode |
 | `passcode_enter` | Enter |
 | `who_heading` | Tap your name |
 | `who_text` | The coach set up one name for each athlete. |
@@ -174,7 +174,7 @@ Each reader-visible string the agent wrote, with its key, for the person to read
 | `err_not_yours` | That max belongs to another athlete. |
 | `err_note` | The voice note was not saved. Check the title and the length. |
 | `err_offline` | This phone is offline. Changes wait until it is back online. |
-| `err_passcode_empty` | Type the passcode first. |
+| `err_passcode_empty` | Type a passcode first. |
 | `err_start` | The start date for {name} must be a Monday. |
 | `err_unreachable` | The database did not answer. Check the signal and try again. |
 | `err_bad_passcode` | That passcode was not accepted. |

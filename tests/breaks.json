@@ -334,5 +334,12 @@
     "find": "\"cancel\": \"Cancel\",",
     "replace": "\"cancel\": \"Cancel\",\n  \"stray\": \"Nothing uses this.\",",
     "test": "every_string_in_the_strings_file_is_used_by_the_core_or_the_page"
+  },
+  {
+    "name": "the coach passcode alone is refused",
+    "file": "crates/core/src/api.rs",
+    "find": "if form.field(\"group\").is_empty() && form.field(\"coach\").is_empty() {",
+    "replace": "if form.field(\"group\").is_empty() {",
+    "test": "an_empty_passcode_is_refused_and_a_typed_one_becomes_one_request"
   }
 ]

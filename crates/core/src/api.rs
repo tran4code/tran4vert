@@ -400,7 +400,8 @@ fn step(mut st: State, name: &str, value: &str) -> Out {
         }
         "passcode.submit" => {
             let form = Form::parse(value)?;
-            if form.field("group").is_empty() {
+            // Either passcode opens the page; the coach passcode alone is enough for the coach.
+            if form.field("group").is_empty() && form.field("coach").is_empty() {
                 st.failure = "err_passcode_empty".into();
                 return Err(s.t("err_passcode_empty"));
             }

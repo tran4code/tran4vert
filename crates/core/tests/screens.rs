@@ -175,9 +175,13 @@ fn an_empty_passcode_is_refused_and_a_typed_one_becomes_one_request() {
     let e = p
         .try_act("passcode.submit", &form("", json!({"group": "  ", "coach": ""})))
         .unwrap_err();
-    assert_eq!(e, "Type the passcode first.");
+    assert_eq!(e, "Type a passcode first.");
     p.act("passcode.submit", &form("", json!({"group": "x", "coach": ""})));
     assert_eq!(p.requests().len(), 1);
+    // The coach passcode alone is enough.
+    let mut c = Page::open("2026-12-01");
+    c.act("passcode.submit", &form("", json!({"group": "", "coach": "y"})));
+    assert_eq!(c.requests().len(), 1);
     assert_eq!(p.requests()[0]["rpc"], "get_state");
     // The core never holds the passcode: nothing the page keeps names it.
     assert!(!p.state.contains("\"x\""));
