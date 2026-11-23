@@ -9,5 +9,14 @@
 //! describes. Keep `api.rs` as the one door the shim calls through.
 
 pub mod api;
+pub mod data;
+pub mod dates;
 pub mod glossary;
+pub mod maxes;
+pub mod moves;
+pub mod notes;
 pub mod page;
+pub mod program;
+pub mod schedule;
+#[cfg(test)]
+mod testing;

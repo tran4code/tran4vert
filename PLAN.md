@@ -88,4 +88,4 @@ Answerable by number; each has a default the build uses until answered.
 
 ## Status
 
-- [ ] Read by the person on: 
+- [x] Read by the person on: 2026-11-23

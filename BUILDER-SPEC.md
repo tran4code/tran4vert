@@ -68,4 +68,6 @@ These stay with the person and go in `BRIEF.md` or `PLAN.md`:
 
 | Default | Changed to | Reason | Recorded in |
 | --- | --- | --- | --- |
-| | | | |
+| D17 | `web/save/store.js` keeps the group passcode, the coach passcode if entered, the chosen athlete and the last state fetched in `localStorage`; no other page file names browser storage | friends should type the passcode once and see their session without signal (kits/saves; the core's versioned save and playtest files are not used, R2.4) | `crates/core/tests/storage_fence.rs`; SECOND-ORDER.md |
+| D3, D4, page scan | `web/net/config.js` may hold the Supabase address and key; `web/net/client.js` may call `fetch` off-origin; `connect-src` is `'self'` plus exactly the address in `config.js`; `media-src blob:` | the Supabase project is the brief's declared off-origin feature (R7; the fence pattern of kits/online, without its relays or rollback) | `crates/core/tests/net_fence.rs`; SECOND-ORDER.md |
+| D4, D7 | CSP adds `manifest-src 'self'`; the browser check runs `webkit-iphone`; the tablet pass is not added | phone first (kits/mobile) | `tests/browser/interactions.py`; SECOND-ORDER.md |
