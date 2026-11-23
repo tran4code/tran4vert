@@ -713,8 +713,13 @@ fn page_keeps_no_rule_and_names_no_other_origin() {
     let mut js_files = 0;
     for path in web_files() {
         let text = fs::read_to_string(&path).expect("read page file");
+        // Declared off-origin feature (R7, the kit's fence pattern): `net_fence.rs` owns the one
+        // address. `web/net/config.js` holds it, each page's CSP line lists it, and the fence
+        // matches the two exactly. No other line may hold an address.
+        let net_config = path.ends_with("web/net/config.js");
         for (n, line) in text.lines().enumerate() {
-            if without_allowed_urls(line).contains("://") {
+            let csp_line = line.contains("http-equiv=\"Content-Security-Policy\"");
+            if !net_config && !csp_line && without_allowed_urls(line).contains("://") {
                 problems.push(format!(
                     "{}:{}: absolute URL (another origin?)",
                     path.display(),

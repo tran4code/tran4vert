@@ -1,16 +1,296 @@
 [
   {
-    "name": "an empty title is refused",
-    "file": "crates/core/src/page.rs",
-    "find": "if strings.title.trim().is_empty() {",
-    "replace": "if false {",
-    "test": "an_empty_title_is_rejected_by_name"
+    "name": "a date that is not real is accepted",
+    "file": "crates/core/src/dates.rs",
+    "find": "    if format(number) == text {\n        Some(number)\n    } else {\n        None\n    }",
+    "replace": "    Some(number)",
+    "test": "a_date_that_does_not_exist_is_refused"
   },
   {
-    "name": "an unknown action is refused",
+    "name": "the weekday is a day off",
+    "file": "crates/core/src/dates.rs",
+    "find": "(days + 3).rem_euclid(7) as u8",
+    "replace": "(days + 4).rem_euclid(7) as u8",
+    "test": "the_first_of_july_2024_is_a_monday"
+  },
+  {
+    "name": "january and february count in the wrong year",
+    "file": "crates/core/src/dates.rs",
+    "find": "let y = if month <= 2 { year - 1 } else { year };",
+    "replace": "let y = year;",
+    "test": "adding_days_crosses_a_leap_day_and_a_year_end"
+  },
+  {
+    "name": "the Monday on or before stays put",
+    "file": "crates/core/src/dates.rs",
+    "find": "days - i64::from(weekday(days))",
+    "replace": "days",
+    "test": "the_monday_on_or_before_a_wednesday_is_two_days_earlier"
+  },
+  {
+    "name": "a name that points nowhere in the library is accepted",
+    "file": "crates/core/src/program.rs",
+    "find": "if !self.library.contains_key(r) {",
+    "replace": "if false {",
+    "test": "a_name_that_points_nowhere_is_an_error_naming_it"
+  },
+  {
+    "name": "the cycle note reference shows nothing",
+    "file": "crates/core/src/program.rs",
+    "find": "Some(\"cycle_note\") => cycle.cycle_note.clone(),",
+    "replace": "Some(\"cycle_note\") => String::new(),",
+    "test": "a_note_reference_resolves_to_the_programs_note_or_the_cycles_own"
+  },
+  {
+    "name": "a lift ignores the max it takes from another",
+    "file": "crates/core/src/program.rs",
+    "find": "Some(other) => other,",
+    "replace": "Some(_) => lift,",
+    "test": "a_lift_that_takes_its_max_from_another_resolves_to_it"
+  },
+  {
+    "name": "the file's private maxes reach the model",
+    "file": "crates/core/src/program.rs",
+    "find": "    pub not_captured: Vec<String>,",
+    "replace": "    pub not_captured: Vec<String>,\n    #[serde(default)]\n    pub maxes_from_pdf: serde_json::Value,",
+    "test": "fields_the_model_does_not_name_never_leave_the_core"
+  },
+  {
+    "name": "a cycle is seven days long",
+    "file": "crates/core/src/schedule.rs",
+    "find": "start + CYCLE_DAYS * cycle as i64 + 7 * week as i64 + i64::from(dow)",
+    "replace": "start + 7 * cycle as i64 + 7 * week as i64 + i64::from(dow)",
+    "test": "cycle_two_week_one_monday_is_twenty_eight_days_after_the_start"
+  },
+  {
+    "name": "a date before the start is read as a session",
+    "file": "crates/core/src/schedule.rs",
+    "find": "    if date < start {",
+    "replace": "    if date < start - 1000 {",
+    "test": "before_the_start_the_answer_is_the_start_date"
+  },
+  {
+    "name": "a day with no session is not loaded instead of rest",
+    "file": "crates/core/src/schedule.rs",
+    "find": "None => Place::Rest { cycle, week, dow },",
+    "replace": "None => Place::NotLoaded { cycle, week },",
+    "test": "a_weekday_the_week_has_no_session_for_is_a_rest_day"
+  },
+  {
+    "name": "the week number rounds toward zero",
+    "file": "crates/core/src/schedule.rs",
+    "find": "(date - start).div_euclid(7)",
+    "replace": "(date - start) / 7",
+    "test": "the_week_number_counts_from_the_start_and_goes_negative_before_it"
+  },
+  {
+    "name": "a moved session stays on its own date",
+    "file": "crates/core/src/moves.rs",
+    "find": "Some(to) if to != date => entries.push(Entry::MovedOut { slot, to }),",
+    "replace": "Some(to) if false && to != date => entries.push(Entry::MovedOut { slot, to }),",
+    "test": "a_moved_session_shows_on_its_new_date_marked_and_the_old_date_says_where_it_went"
+  },
+  {
+    "name": "a moved session does not show on the new date",
+    "file": "crates/core/src/moves.rs",
+    "find": "        if dates::parse(&m.to) != Some(date) {",
+    "replace": "        if dates::parse(&m.to) == Some(date) {",
+    "test": "a_moved_session_shows_on_its_new_date_marked_and_the_old_date_says_where_it_went"
+  },
+  {
+    "name": "sessions on one date are not in program order",
+    "file": "crates/core/src/moves.rs",
+    "find": "Entry::Session { slot, .. } | Entry::MovedOut { slot, .. } => order_key(slot),",
+    "replace": "Entry::Session { slot, .. } | Entry::MovedOut { slot, .. } => (0, 0, 0),",
+    "test": "two_sessions_on_one_date_are_both_listed_in_program_order"
+  },
+  {
+    "name": "a second move keeps the first",
+    "file": "crates/core/src/data.rs",
+    "find": "            data.moves.retain(|m| !same_session(m, &rec));\n            data.moves.push(rec);",
+    "replace": "            data.moves.push(rec);",
+    "test": "moving_a_session_again_replaces_the_first_move"
+  },
+  {
+    "name": "a move to the own date is accepted",
+    "file": "crates/core/src/moves.rs",
+    "find": "if to == schedule::natural_day(start, slot.cycle, slot.week, slot.dow) {",
+    "replace": "if false {",
+    "test": "a_move_to_the_sessions_own_date_or_to_a_missing_session_is_refused"
+  },
+  {
+    "name": "working weights are cut down instead of rounded",
+    "file": "crates/core/src/maxes.rs",
+    "find": "let scaled = u64::from(max) * u64::from(pct) + 250;",
+    "replace": "let scaled = u64::from(max) * u64::from(pct);",
+    "test": "working_weights_round_to_the_nearest_five_as_worked_by_hand"
+  },
+  {
+    "name": "exactly halfway rounds down",
+    "file": "crates/core/src/maxes.rs",
+    "find": "let scaled = u64::from(max) * u64::from(pct) + 250;",
+    "replace": "let scaled = u64::from(max) * u64::from(pct) + 249;",
+    "test": "exactly_halfway_rounds_up"
+  },
+  {
+    "name": "a max dated after the session is used",
+    "file": "crates/core/src/maxes.rs",
+    "find": ".filter(|m| dates::parse(&m.date).is_some_and(|d| d <= on))",
+    "replace": ".filter(|m| dates::parse(&m.date).is_some())",
+    "test": "a_max_dated_after_the_session_is_not_used"
+  },
+  {
+    "name": "the earlier entry wins on one date",
+    "file": "crates/core/src/maxes.rs",
+    "find": ".max_by_key(|m| (dates::parse(&m.date).unwrap_or(i64::MIN), m.id))",
+    "replace": ".max_by_key(|m| (dates::parse(&m.date).unwrap_or(i64::MIN), 0u64))",
+    "test": "two_maxes_on_one_date_use_the_one_entered_last"
+  },
+  {
+    "name": "a variant uses its own max",
+    "file": "crates/core/src/maxes.rs",
+    "find": "let max_lift = data.program.max_lift(of).to_string();",
+    "replace": "let max_lift = of.to_string();",
+    "test": "a_lift_that_takes_its_max_from_another_uses_that_lifts_max"
+  },
+  {
+    "name": "history lists oldest first",
+    "file": "crates/core/src/maxes.rs",
+    "find": "all.sort_by_key(|m| std::cmp::Reverse((dates::parse(&m.date).unwrap_or(i64::MIN), m.id)));",
+    "replace": "all.sort_by_key(|m| (dates::parse(&m.date).unwrap_or(i64::MIN), m.id));",
+    "test": "history_lists_newest_first"
+  },
+  {
+    "name": "a note shows on lifts that share a name's start",
+    "file": "crates/core/src/notes.rs",
+    "find": "data.notes.iter().filter(|n| n.lift == lift).collect();",
+    "replace": "data.notes.iter().filter(|n| n.lift.get(..4) == lift.get(..4)).collect();",
+    "test": "a_note_belongs_to_its_exact_lift_and_no_other"
+  },
+  {
+    "name": "notes list oldest first",
+    "file": "crates/core/src/notes.rs",
+    "find": "found.sort_by_key(|n| std::cmp::Reverse((dates::parse(&n.date).unwrap_or(i64::MIN), n.id)));",
+    "replace": "found.sort_by_key(|n| (dates::parse(&n.date).unwrap_or(i64::MIN), n.id));",
+    "test": "a_note_belongs_to_its_exact_lift_and_no_other"
+  },
+  {
+    "name": "a length loses its zero",
+    "file": "crates/core/src/notes.rs",
+    "find": "format!(\"{}:{:02}\", seconds / 60, seconds % 60)",
+    "replace": "format!(\"{}:{}\", seconds / 60, seconds % 60)",
+    "test": "lengths_read_as_minutes_and_seconds"
+  },
+  {
+    "name": "a note of any length is accepted",
+    "file": "crates/core/src/notes.rs",
+    "find": "if seconds == 0 || seconds > MAX_NOTE_SECONDS {",
+    "replace": "if seconds == 0 {",
+    "test": "a_note_needs_a_known_lift_a_title_and_a_length_in_range"
+  },
+  {
+    "name": "an empty string is accepted",
+    "file": "crates/core/src/page.rs",
+    "find": "        if text.trim().is_empty() {",
+    "replace": "        if false {",
+    "test": "an_empty_value_is_rejected_by_name"
+  },
+  {
+    "name": "a missing string is accepted",
+    "file": "crates/core/src/page.rs",
+    "find": "        if !map.contains_key(key) {",
+    "replace": "        if false {",
+    "test": "a_missing_key_is_rejected_by_name"
+  },
+  {
+    "name": "a bad max weight is accepted",
+    "file": "crates/core/src/data.rs",
+    "find": "if weight == 0 || weight > MAX_WEIGHT {",
+    "replace": "if false {",
+    "test": "a_bad_max_is_refused_in_words"
+  },
+  {
+    "name": "the phone is trusted to change data while offline",
     "file": "crates/core/src/api.rs",
-    "find": "other => return Err(format!(\"Unknown action \\\"{other}\\\".\")),",
-    "replace": "_ => {}",
-    "test": "act_refuses_an_unknown_action"
+    "find": "    if st.offline && CHANGES.contains(&name) {",
+    "replace": "    if false && CHANGES.contains(&name) {",
+    "test": "offline_the_session_is_drawn_from_what_was_kept_and_changes_are_off"
+  },
+  {
+    "name": "an unreadable kept choice is believed",
+    "file": "crates/core/src/api.rs",
+    "find": "if v.get(\"v\").and_then(Value::as_u64) == Some(1) {",
+    "replace": "if true {",
+    "test": "the_phone_remembers_the_name_and_ignores_a_kept_choice_it_cannot_read"
+  },
+  {
+    "name": "an athlete deletes a friend's max",
+    "file": "crates/core/src/api.rs",
+    "find": "if !data.is_coach() && Some(rec.athlete) != st.athlete {",
+    "replace": "if false {",
+    "test": "an_athlete_deletes_their_own_max_but_not_a_friends"
+  },
+  {
+    "name": "an athlete moves a session for all three",
+    "file": "crates/core/src/api.rs",
+    "find": "                if !data.is_coach() {\n                    return Err(s.t(\"err_not_coach\"));\n                }\n                data.athletes.iter().map(|a| a.id).collect()",
+    "replace": "                data.athletes.iter().map(|a| a.id).collect()",
+    "test": "the_coach_moves_one_session_for_all_three_and_an_athlete_cannot"
+  },
+  {
+    "name": "an athlete sets start dates",
+    "file": "crates/core/src/api.rs",
+    "find": "            if !data.is_coach() {\n                return Err(s.t(\"err_not_coach\"));\n            }\n            let form = Form::parse(value)?;\n            for a in &data.athletes {",
+    "replace": "            let form = Form::parse(value)?;\n            for a in &data.athletes {",
+    "test": "only_the_coach_has_the_coach_screen_and_its_changes"
+  },
+  {
+    "name": "a recording's seconds round down",
+    "file": "crates/core/src/api.rs",
+    "find": "ms.div_ceil(1000)",
+    "replace": "ms / 1000",
+    "test": "the_coach_records_a_note_and_deletes_one"
+  },
+  {
+    "name": "every start date goes out, changed or not",
+    "file": "crates/core/src/api.rs",
+    "find": "if wanted.is_empty() || wanted == a.start {",
+    "replace": "if wanted.is_empty() {",
+    "test": "the_coach_sets_start_dates_and_cycle_notes_and_only_changes_go_out"
+  },
+  {
+    "name": "the glossary keeps its placeholders",
+    "file": "crates/core/src/api.rs",
+    "find": "(\"cycle.weeks\", &schedule::CYCLE_WEEKS.to_string()),",
+    "replace": "(\"cycle.weeks_\", &schedule::CYCLE_WEEKS.to_string()),",
+    "test": "the_glossary_reaches_the_page_with_its_numbers_filled_in"
+  },
+  {
+    "name": "a week with no data shows as loaded",
+    "file": "crates/core/src/view.rs",
+    "find": "let loaded = week.is_some_and(|x| !x.missing);",
+    "replace": "let loaded = week.is_some();",
+    "test": "the_cycles_screen_marks_weeks_with_no_data_and_lists_what_is_not_captured"
+  },
+  {
+    "name": "a voice note shows on no lift block",
+    "file": "crates/core/src/view.rs",
+    "find": "for n in notes::notes_for(ctx.data, &lift) {",
+    "replace": "for n in notes::notes_for(ctx.data, \"\") {",
+    "test": "a_voice_note_shows_on_every_block_of_its_lift_for_every_athlete_and_on_no_other"
+  },
+  {
+    "name": "the recorder shows for an athlete",
+    "file": "crates/core/src/view.rs",
+    "find": "    if ctx.coach() {\n        panels.push(recorder(ctx, lift));\n    }",
+    "replace": "    panels.push(recorder(ctx, lift));",
+    "test": "the_lift_screen_shows_the_athletes_max_and_the_voice_notes"
+  },
+  {
+    "name": "the timer shows milliseconds as seconds",
+    "file": "crates/core/src/api.rs",
+    "find": "u32::try_from(ms / 1000)",
+    "replace": "u32::try_from(ms)",
+    "test": "the_recorders_timer_shows_whole_seconds_as_minutes_and_seconds"
   }
 ]

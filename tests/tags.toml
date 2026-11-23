@@ -59,3 +59,15 @@ name = "the checks themselves"
 # a change to a script that runs or builds the checks runs everything
 files = ["scripts/**", "tests/tags.toml"]
 steps = ["all"]
+
+[[rule]]
+name = "the invented sample program and the home-screen icon"
+# the core's tests read the sample, and the build copies both into dist/
+files = ["tests/fixtures/**", "assets/**"]
+steps = ["core", "build", "wasm", "browser"]
+
+[[rule]]
+name = "the database and the tools that reach it"
+# schema and tools run against the person's Supabase project, not in check.sh
+files = ["supabase/**", "tools/seed.py", "tools/remote_check.py", "tools/screenshots.py", "tools/set_project.py"]
+steps = ["core"]

@@ -18,7 +18,11 @@ use std::path::{Path, PathBuf};
 use tool_core::glossary;
 
 /// (file name, word, reason): a ruled-out word that is right in one file.
-const ALLOWED: &[(&str, &str, &str)] = &[];
+const ALLOWED: &[(&str, &str, &str)] = &[
+    // The recorder settings list MIME types such as "audio/mp4", which the browser's
+    // recorder is asked for by name. The strings are never shown to a reader.
+    ("data/audio.json", "audio", "MIME type names, not reader-visible text"),
+];
 
 fn root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("..").join("..")

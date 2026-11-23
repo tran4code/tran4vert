@@ -177,6 +177,8 @@ mod tests {
         let old = day_view(&data, &a, d("2026-12-01"));
         assert!(matches!(old.entries[..], [Entry::MovedOut { to, .. }] if to == d("2026-12-03")));
         assert!(!old.has_session());
+        // The move shows on no other date: Wednesday keeps only its own session.
+        assert_eq!(day_view(&data, &a, d("2026-12-02")).entries.len(), 1);
         let new = day_view(&data, &a, d("2026-12-03"));
         // The moved Tuesday lift session comes before Thursday's own jump session: program order.
         assert_eq!(new.entries.len(), 2);

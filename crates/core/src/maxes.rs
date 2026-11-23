@@ -122,7 +122,7 @@ mod tests {
     #[test]
     fn two_maxes_on_one_date_use_the_one_entered_last() {
         let mut data = sample_data();
-        for (id, w) in [(50, 310), (51, 300)] {
+        for (id, w) in [(51, 300), (50, 310)] {
             data.maxes.push(MaxRec {
                 id,
                 athlete: 1,

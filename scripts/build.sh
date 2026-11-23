@@ -41,6 +41,25 @@ wasm-bindgen --target web --no-typescript --out-dir dist/pkg \
 cp -R web/. dist/
 cp -R data/. dist/data/
 cp GLOSSARY.md dist/data/glossary.md
+# The demo's program is the invented sample, never the person's own (kits: PLAN decision 18).
+cp tests/fixtures/sample_program.json dist/data/demo_program.json
+# The home-screen icon sits outside web/, because the page scan reads every file there as text.
+cp assets/apple-touch-icon.png dist/apple-touch-icon.png
+# The web app manifest comes from data/app.json, so the name and colours have one home (kits/mobile M3).
+python3 - <<'PY'
+import json
+app = json.load(open("data/app.json"))
+manifest = {
+    "name": app["name"],
+    "short_name": app["short_name"],
+    "display": app["display"],
+    "background_color": app["background_color"],
+    "theme_color": app["theme_color"],
+    "start_url": "./index.html",
+    "icons": [{"src": "apple-touch-icon.png", "sizes": "180x180", "type": "image/png"}],
+}
+json.dump(manifest, open("dist/manifest.webmanifest", "w"), indent=2)
+PY
 
 # Cache busting. The hash covers every file, so any change gives new URLs.
 BUILD=$(find dist -type f | LC_ALL=C sort | xargs cat | sha256 | cut -c1-12)
