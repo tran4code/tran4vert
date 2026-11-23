@@ -127,6 +127,24 @@ class Database:
             return 400, {"message": "bad_passcode"}
         if name == "get_state":
             return 200, {**self.state, "role": role, "me": me}
+        if name == "log_set":
+            rows = self.state.setdefault("logs", [])
+            same = [r for r in rows if (r["athlete"], r["cycle"], r["week"], r["dow"], r["block"], r["set"])
+                    == (body["p_athlete"], body["p_cycle"], body["p_week"], body["p_dow"], body["p_block"], body["p_set"])]
+            for r in same:
+                rows.remove(r)
+            if body["p_done"]:
+                rows.append({"athlete": body["p_athlete"], "cycle": body["p_cycle"], "week": body["p_week"], "dow": body["p_dow"],
+                             "block": body["p_block"], "set": body["p_set"], "weight": body["p_weight"]})
+            return 200, None
+        if name == "finish_session":
+            rows = self.state.setdefault("finishes", [])
+            rows[:] = [r for r in rows if (r["athlete"], r["cycle"], r["week"], r["dow"])
+                       != (body["p_athlete"], body["p_cycle"], body["p_week"], body["p_dow"])]
+            if body["p_done"]:
+                rows.append({"athlete": body["p_athlete"], "cycle": body["p_cycle"], "week": body["p_week"],
+                             "dow": body["p_dow"], "at": "2026-12-01T09:00:00.000Z"})
+            return 200, None
         if name == "add_max":
             if role == "athlete" and body["p_athlete"] != me:
                 return 400, {"message": "not_yours"}
@@ -248,12 +266,33 @@ def run_engine(p, engine, origin):
     page.click("#who-you button:text-is('Back to today')")
     page.wait_for_selector("body[data-screen='today']", state="attached")
 
+    # checking a set is sent with the athlete, the place in the session and the weight; the data comes back
+    page.fill("#session-c1-1-1-b1-weight", "235")
+    calls = len(db.calls)
+    page.click("[data-row='session-c1-1-1-b1'] button.check:text-is('Set 1')")
+    page.wait_for_selector("[data-row='session-c1-1-1-b1'] button.check[aria-pressed='true']", state="attached")
+    sent = [c for c in db.calls[calls:] if c[0] == "log_set"]
+    check(
+        len(sent) == 1 and sent[0][1]["p_athlete"] == 1 and sent[0][1]["p_block"] == 1 and sent[0][1]["p_set"] == 1
+        and sent[0][1]["p_weight"] == 235 and sent[0][1]["p_done"] is True,
+        f"a checked set is sent with its place and weight {sent}",
+    )
+    # Jo finished this session already (the pretend database has it): Sam is nudged, and reading it is remembered.
+    db.state["finishes"] = [{"athlete": 2, "cycle": "c1", "week": 1, "dow": 1, "at": "2026-12-01T08:00:00.000Z"}]
+
     before = len(db.calls)
     page.reload()
     page.wait_for_selector("body[data-ready='true']", state="attached")
     page.wait_for_selector("body[data-screen='today']", state="attached")
     check(page.query_selector("#session-c1-1-1") is not None, "after a reload the name and passcode are remembered")
     page.wait_for_function("() => document.getElementById('message').textContent === ''", polling=100)
+    page.wait_for_selector("#popup .card", state="attached")
+    check((page.text_content("#popup p") or "").startswith("Jo is done"), "a rival's finish shows as a message on Today")
+    page.click("#popup button:text-is('Got it')")
+    page.reload()
+    page.wait_for_selector("body[data-screen='today']", state="attached")
+    page.wait_for_function("() => document.getElementById('message').textContent === ''", polling=100)
+    check(page.query_selector("#popup") is None, "a message that was read does not come back after a reload")
     check(len(db.calls) > before, "the reload fetched the data again")
 
     page.click("#nav button:text-is('Maxes')")

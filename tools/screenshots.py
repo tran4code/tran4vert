@@ -83,6 +83,18 @@ def main(out):
         shot("2-today")
         page.evaluate("window.scrollTo(0, 560)")
         shot("3-today-lift", top=False)
+        page.evaluate("window.scrollTo(0, 560)")
+        page.fill("#session-c1-1-1-b1-weight", "235")
+        page.click("[data-row='session-c1-1-1-b1'] button.check:text-is('Set 1')")
+        page.click("[data-row='session-c1-1-1-b1'] button.check:text-is('Set 2')")
+        shot("3b-sets-checked", top=False)
+        page.evaluate("window.scrollTo(0, 0)")
+        page.click("#session-c1-1-1 button:text-is('Finish session')")
+        page.wait_for_selector("#popup .card", state="attached")
+        # the card eases in; let it finish before the picture
+        page.wait_for_function("() => getComputedStyle(document.querySelector('#popup .card')).opacity === '1'", polling=50)
+        shot("3c-finished-message")
+        page.click("#popup button:text-is('Got it')")
         go("Week")
         page.wait_for_selector("body[data-screen='week']", state="attached")
         shot("4-week")
@@ -101,6 +113,8 @@ def main(out):
         page.click("#demo-coach button")
         # Jo, whose Tuesday session has not been moved.
         page.click("[data-row='athlete-2'] button")
+        while page.query_selector("#popup button"):
+            page.click("#popup button")
         page.click("[data-row='session-c1-1-1-b1'] button:text-is('Open lift')")
         page.wait_for_selector("body[data-screen='lift']", state="attached")
         shot("8-lift-coach")

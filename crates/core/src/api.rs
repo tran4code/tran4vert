@@ -36,6 +36,20 @@ fn error(message: String) -> String {
     serde_json::json!({ "error": message }).to_string()
 }
 
+/// How many read messages the phone keeps.
+const MAX_SEEN: usize = 200;
+
+/// A set (or a block) of a session, named the way the database names it.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+struct LogKey {
+    cycle: String,
+    week: u32,
+    dow: u8,
+    block: u32,
+    #[serde(default)]
+    set: u32,
+}
+
 /// A session of the program, named the way the database names it.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MoveKey {
@@ -84,6 +98,9 @@ pub struct State {
     /// The athlete who tapped their name and is choosing a goal.
     #[serde(default)]
     pub pick_for: Option<u64>,
+    /// Ids of the messages already read on this phone.
+    #[serde(default)]
+    pub seen: Vec<String>,
 }
 
 /// The new state, the calls to make, the sign-in to send with them, and a message.
@@ -192,6 +209,7 @@ fn render(st: State, hints: Vec<Hint>, requests: Vec<Request>, code: String, mes
         hints,
         requests,
         keep,
+        seen: serde_json::to_string(&st.seen).unwrap_or_default(),
         code,
         message,
         labels: page_labels(&s),
@@ -214,6 +232,11 @@ fn page_labels(s: &Strings) -> std::collections::BTreeMap<String, String> {
 fn disable_changes(ui: &mut Ui<State>) {
     fn walk(list: &mut [crate::ui::Row]) {
         for r in list {
+            for a in r.sets.iter_mut().chain(r.actions.iter_mut()) {
+                if CHANGES.contains(&a.name.as_str()) {
+                    a.enabled = false;
+                }
+            }
             for a in &mut r.actions {
                 if CHANGES.contains(&a.name.as_str()) {
                     a.enabled = false;
@@ -257,6 +280,7 @@ pub fn start(strings_json: &str, glossary_md: &str, today: &str) -> String {
             forgetting: false,
             names: Vec::new(),
             pick_for: None,
+            seen: Vec::new(),
         };
         Ok(render(state, hints, Vec::new(), String::new(), String::new()))
     };
@@ -354,6 +378,8 @@ fn demo_data(program_json: &str, s: &Strings, today: i64) -> Result<Data, String
         moves: Vec::new(),
         notes: Vec::new(),
         cycle_notes: Vec::new(),
+        logs: Vec::new(),
+        finishes: Vec::new(),
         role: "athlete".to_string(),
         me: None,
         as_of: dates::format(today),
@@ -414,6 +440,64 @@ fn step(mut st: State, name: &str, value: &str) -> Out {
                 let data = st.data.as_mut().ok_or_else(|| s.t("err_no_data"))?;
                 apply(data, &request)?;
             }
+        }
+        "seen.load" => {
+            // An unreadable list means nothing was read: messages show again.
+            st.seen = serde_json::from_str(value).unwrap_or_default();
+        }
+        "msg.dismiss" => {
+            if !st.seen.iter().any(|m| m == value) {
+                st.seen.push(value.to_string());
+            }
+            // Only the latest ones matter: the oldest are dropped.
+            let extra = st.seen.len().saturating_sub(MAX_SEEN);
+            st.seen.drain(..extra);
+        }
+        "set.toggle" | "block.toggle" => {
+            let data = need_data(&st)?;
+            let athlete = need_athlete(&st)?;
+            let form = Form::parse(value)?;
+            let key: LogKey = serde_json::from_str(&form.value).map_err(|_| s.t("err_log"))?;
+            let set = if name == "block.toggle" { 0 } else { key.set };
+            let was_done = data.logs.iter().any(|l| {
+                l.athlete == athlete
+                    && l.cycle == key.cycle
+                    && l.week == key.week
+                    && l.dow == key.dow
+                    && l.block == key.block
+                    && l.set == set
+            });
+            let typed = form.field("weight");
+            let weight = if name == "set.toggle" && !typed.is_empty() {
+                Value::from(number(&typed, "err_weight", &s)?)
+            } else {
+                Value::Null
+            };
+            let request = checked(
+                data,
+                Request::new(
+                    "log_set",
+                    json!({"athlete": athlete, "cycle": key.cycle, "week": key.week, "dow": key.dow,
+                           "block": key.block, "set": set, "weight": weight, "done": !was_done}),
+                ),
+            )
+            .map_err(|_| s.t("err_log"))?;
+            requests.push(request);
+        }
+        "session.finish" | "session.unfinish" => {
+            let data = need_data(&st)?;
+            let athlete = need_athlete(&st)?;
+            let key = key_of(value)?;
+            let request = checked(
+                data,
+                Request::new(
+                    "finish_session",
+                    json!({"athlete": athlete, "cycle": key.cycle, "week": key.week, "dow": key.dow,
+                           "done": name == "session.finish"}),
+                ),
+            )
+            .map_err(|_| s.t("err_log"))?;
+            requests.push(request);
         }
         "names.load" => {
             st.names = serde_json::from_str(value).map_err(|_| s.t("err_unreachable"))?;

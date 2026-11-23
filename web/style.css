@@ -169,3 +169,22 @@ li[data-category] { border-left: 6px solid var(--cat); padding-left: 0.6em; }
 .side .inches { display: block; font-weight: 700; }
 .side.before .inches { color: #8fa2e0; }
 .side.after .inches { color: var(--accent); }
+
+/* ---- check boxes, the weight for a lift's sets, and the message over the screen ---- */
+.sets { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0.4rem 0; }
+button.check { min-width: 4.2em; background: var(--soft); font-weight: 600; }
+button.check[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+button.check[aria-pressed="true"]::before { content: "\2713\00a0"; }
+.weight { max-width: 12em; }
+section[data-kind="popup"] {
+  position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: var(--gutter);
+  background: rgba(5, 8, 20, 0.72); border: 0; margin: 0;
+}
+section[data-kind="popup"] .card {
+  max-width: 24em; width: 100%; padding: 1.2em; border-radius: 22px; background: var(--paper); color: var(--ink);
+  border: 2px solid var(--accent); box-shadow: 0 10px 40px #0008; animation: pop 0.25s ease-out;
+}
+section[data-kind="popup"] h2 { color: var(--accent); }
+section[data-kind="popup"] p { font-size: 1.15em; font-weight: 600; }
+@keyframes pop { from { transform: scale(0.92); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { section[data-kind="popup"] .card { animation: none; } }

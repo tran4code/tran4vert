@@ -14,6 +14,9 @@ pub struct Action {
     pub value: String,
     pub label: String,
     pub enabled: bool,
+    /// For a check box: whether it is checked. Left out for an ordinary button.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pressed: Option<bool>,
 }
 
 impl Action {
@@ -23,7 +26,13 @@ impl Action {
             value: value.to_string(),
             label: label.to_string(),
             enabled: true,
+            pressed: None,
         }
+    }
+
+    pub fn pressed(mut self, on: bool) -> Action {
+        self.pressed = Some(on);
+        self
     }
 }
 
@@ -105,6 +114,11 @@ pub struct Row {
     pub initial: String,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub actions: Vec<Action>,
+    /// The sets of a lift, each a check box; `field` holds the weight typed for them.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub sets: Vec<Action>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub field: Option<Field>,
 }
 
 impl Row {
@@ -213,6 +227,8 @@ pub struct Ui<S: Serialize> {
     pub requests: Vec<Request>,
     /// Text for the phone to keep under `choice`; empty when there is none.
     pub keep: String,
+    /// Text for the phone to keep under `seen`: the messages already read.
+    pub seen: String,
     /// The sign-in the page sends with the calls it makes, when one was just chosen.
     pub code: String,
     pub message: String,

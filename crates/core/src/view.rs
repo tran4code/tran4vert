@@ -17,7 +17,11 @@ use crate::schedule::{self, CYCLE_WEEKS};
 use crate::ui::{Action, Choice, Field, Header, NavItem, Panel, Row};
 
 /// Action names that change shared data; they are off while the phone is offline.
-pub const CHANGES: [&str; 14] = [
+pub const CHANGES: [&str; 18] = [
+    "set.toggle",
+    "block.toggle",
+    "session.finish",
+    "session.unfinish",
     "avatar.save",
     "goals.set",
     "max.add",
@@ -500,6 +504,41 @@ pub fn day_panels(ctx: &Ctx, date: i64) -> Vec<Panel> {
                     p.rows
                         .push(block_row(ctx, slot.cycle_ref, block, &format!("{id}-b{i}"), date));
                 }
+                let (done, total) = checks(ctx, slot, &key, &mut p.rows, date);
+                if total > 0 {
+                    p.text = format!(
+                        "{} · {}",
+                        p.text,
+                        s.f(
+                            "progress_text",
+                            &[("done", &done.to_string()), ("total", &total.to_string())]
+                        )
+                    );
+                }
+                let finished = ctx.data.finishes.iter().any(|f| {
+                    f.athlete == ctx.athlete.id
+                        && f.cycle == key.cycle
+                        && f.week == key.week
+                        && f.dow == key.dow
+                });
+                if finished {
+                    p.marker = if p.marker.is_empty() {
+                        s.t("session_finished")
+                    } else {
+                        format!("{} · {}", p.marker, s.t("session_finished"))
+                    };
+                    p.actions.push(Action::new(
+                        "session.unfinish",
+                        &key_value(&key),
+                        &s.t("finish_undo"),
+                    ));
+                } else {
+                    p.actions.push(Action::new(
+                        "session.finish",
+                        &key_value(&key),
+                        &s.t("finish_button"),
+                    ));
+                }
                 p.actions
                     .push(Action::new("move.start", &key_value(&key), &s.t("move_button")));
                 if moved_from.is_some() {
@@ -566,13 +605,96 @@ fn move_form(ctx: &Ctx, key: &MoveKey, date: i64) -> Panel {
     p
 }
 
+/// The set boxes, weight fields and block checks of a session, from the athlete's own log.
+/// Returns how many boxes are checked and how many there are.
+fn checks(
+    ctx: &Ctx,
+    slot: &schedule::Slot<'_>,
+    key: &MoveKey,
+    rows: &mut [Row],
+    date: i64,
+) -> (usize, usize) {
+    let s = ctx.s;
+    let me = ctx.athlete.id;
+    let logged = |block: usize, set: u32| {
+        ctx.data.logs.iter().find(|l| {
+            l.athlete == me
+                && l.cycle == key.cycle
+                && l.week == key.week
+                && l.dow == key.dow
+                && l.block as usize == block
+                && l.set == set
+        })
+    };
+    let (mut done, mut total) = (0, 0);
+    for (i, block) in slot.day.blocks.iter().enumerate() {
+        let Some(row) = rows.get_mut(i) else { continue };
+        let value = |set: u32| {
+            serde_json::json!({"cycle": key.cycle, "week": key.week, "dow": key.dow, "block": i, "set": set})
+                .to_string()
+        };
+        let sets = block
+            .sets
+            .filter(|n| *n > 0 && !block.amap)
+            .unwrap_or(0)
+            .min(crate::data::MAX_SETS);
+        if block.lift.is_some() && sets > 0 {
+            for n in 1..=sets {
+                let on = logged(i, n).is_some();
+                total += 1;
+                done += usize::from(on);
+                row.sets.push(
+                    Action::new("set.toggle", &value(n), &s.f("set_box", &[("n", &n.to_string())]))
+                        .pressed(on),
+                );
+            }
+            if !block.hold {
+                // The weight typed for the sets: the last one logged, else the working weight.
+                let last = (1..=sets).rev().find_map(|n| logged(i, n).and_then(|l| l.weight));
+                let planned = block
+                    .pct
+                    .as_ref()
+                    .and_then(|p| maxes::weight_for(ctx.data, me, &p.of, p.pct, date))
+                    .map(|w| w.weight);
+                let start = last.or(planned).map(|w| w.to_string()).unwrap_or_default();
+                row.field = Some(Field::new("weight", &s.t("weight_label"), "number", &start));
+            }
+        } else if block.kind() != Some(BlockKind::Note) {
+            let on = logged(i, 0).is_some();
+            total += 1;
+            done += usize::from(on);
+            row.actions
+                .push(Action::new("block.toggle", &value(0), &s.t("block_box")).pressed(on));
+        }
+    }
+    (done, total)
+}
+
+/// The message to show on Today, if there is one not yet read.
+fn popup(ctx: &Ctx) -> Option<Panel> {
+    let s = ctx.s;
+    let first = crate::rivalry::messages(ctx.data, s, ctx.athlete, ctx.today, &ctx.st.seen)
+        .into_iter()
+        .next()?;
+    let mut p = Panel::new("popup", "popup")
+        .heading(&s.t("popup_heading"))
+        .text(&first.text);
+    p.actions = vec![Action::new("msg.dismiss", &first.id, &s.t("popup_ok"))];
+    Some(p)
+}
+
 pub fn today(ctx: &Ctx) -> (String, Vec<Panel>) {
     let date = ctx.st.day.as_deref().and_then(dates::parse).unwrap_or(ctx.today);
     let mut title = long_date(ctx.s, date);
     if date == ctx.today {
         title = ctx.s.f("today_title", &[("date", &title)]);
     }
-    let mut panels = day_panels(ctx, date);
+    let mut panels = Vec::new();
+    // A message about today's session, shown over everything else until it is read.
+    if date == ctx.today {
+        panels.extend(popup(ctx));
+    }
+    panels.extend(day_panels(ctx, date));
     if date != ctx.today {
         let mut back = Panel::new("back-today", "text");
         back.actions = vec![Action::new("screen.show", "today", &ctx.s.t("back_today"))];

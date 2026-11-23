@@ -48,6 +48,8 @@ pub fn sample_data() -> Data {
             note(3, "rope_clean", "Fast elbows", 30, "2026-11-12"),
         ],
         cycle_notes: Vec::new(),
+        logs: Vec::new(),
+        finishes: Vec::new(),
         role: "athlete".to_string(),
         me: None,
         as_of: "2026-11-23".to_string(),

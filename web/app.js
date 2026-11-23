@@ -26,6 +26,7 @@ let hints = [];
 let labels = {};
 let cfg = {};
 let kept = "";
+let readSeen = "[]";
 const live = net.configured();
 // Voice notes recorded in the demo stay in memory; the last one plays.
 let demoNote = null;
@@ -232,6 +233,14 @@ function legendNode(p) {
   return chipsNode(p.rows.map((r) => ({ value: r.category, label: r.label })));
 }
 
+// A check box: a button that says whether it is checked.
+function checkBox(a, li) {
+  const b = button(a, () => perform(a.name, formValue(li, a)));
+  b.className = "check";
+  b.setAttribute("aria-pressed", String(a.pressed));
+  return b;
+}
+
 function rowNode(r) {
   const li = make("li");
   li.dataset.row = r.id;
@@ -265,7 +274,21 @@ function rowNode(r) {
   const children = r.rows || [];
   const actions = make("div");
   actions.className = "actions";
-  (r.actions || []).forEach((a) => actions.append(button(a, () => perform(a.name, a.value))));
+  (r.actions || []).forEach((a) => {
+    actions.append(a.pressed === undefined ? button(a, () => perform(a.name, a.value)) : checkBox(a, li));
+  });
+  if (r.field) {
+    // The weight typed for the sets below it.
+    const wrap = fieldNode(r.field, r.id);
+    wrap.classList.add("weight");
+    body.append(wrap);
+  }
+  if ((r.sets || []).length) {
+    const boxes = make("div");
+    boxes.className = "sets";
+    r.sets.forEach((a) => boxes.append(checkBox(a, li)));
+    body.append(boxes);
+  }
   if (children.length && !r.open) {
     const details = make("details");
     const summary = make("summary");
@@ -298,6 +321,17 @@ function panel(p) {
     box.append(m);
   }
   if (p.text) box.append(make("p", p.text));
+  if (p.kind === "popup") {
+    // A message over the screen until it is read.
+    box.setAttribute("role", "dialog");
+    box.setAttribute("aria-modal", "true");
+    const card = make("div");
+    card.className = "card";
+    card.append(make("h2", p.heading), make("p", p.text));
+    (p.actions || []).forEach((a) => card.append(button(a, () => perform(a.name, a.value))));
+    box.replaceChildren(card);
+    return box;
+  }
   if (p.kind === "hero") {
     box.replaceChildren(heroNode(p));
     return box;
@@ -373,12 +407,17 @@ function draw(ui) {
     kept = ui.keep;
     store.write("choice", ui.keep);
   }
+  // The messages already read stay on this phone.
+  if (ui.seen !== readSeen) {
+    readSeen = ui.seen;
+    store.write("seen", ui.seen);
+  }
 }
 
 // Hands the core one action; draws the answer; makes the calls it asks for.
 async function perform(name, value, extra) {
   if (name === "page.forget") {
-    ["group", "coach", "choice", "state"].forEach(store.remove);
+    ["group", "coach", "choice", "state", "seen"].forEach(store.remove);
     location.reload();
     return true;
   }
@@ -535,6 +574,7 @@ async function main() {
     if (group !== "" || coach !== "") {
       net.setCodes({ group, coach });
       await perform("saved.load", store.read("choice"));
+      await perform("seen.load", store.read("seen") || "[]");
       const cached = store.read("state");
       if (cached !== "") await perform("data.load", cached);
       await sync();

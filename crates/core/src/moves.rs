@@ -42,18 +42,23 @@ impl DayView<'_> {
 }
 
 fn slot_of<'a>(data: &'a Data, m: &MoveRec) -> Option<Slot<'a>> {
-    let cycle = data.program.cycles.iter().position(|c| c.id == m.cycle)?;
+    find_slot(data, &m.cycle, m.week, m.dow)
+}
+
+/// The session of the program named by cycle id, week number (from 1) and weekday.
+pub fn find_slot<'a>(data: &'a Data, cycle_id: &str, week_number: u32, dow: u8) -> Option<Slot<'a>> {
+    let cycle = data.program.cycles.iter().position(|c| c.id == cycle_id)?;
     let cycle_ref = &data.program.cycles[cycle];
-    let week = (m.week as usize).checked_sub(1)?;
+    let week = (week_number as usize).checked_sub(1)?;
     let week_ref = cycle_ref.weeks.get(week)?;
     if week_ref.missing {
         return None;
     }
-    let day = week_ref.days.iter().find(|d| d.dow_index() == m.dow)?;
+    let day = week_ref.days.iter().find(|d| d.dow_index() == dow)?;
     Some(Slot {
         cycle,
         week,
-        dow: m.dow,
+        dow,
         cycle_ref,
         week_ref,
         day,

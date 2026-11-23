@@ -38,6 +38,10 @@ One row per assumption, surprise or open item. **Kind** is *divergence* (what wa
 | R2.21 | worklist | The database has the picture columns. | Not until the person runs `supabase/schema.sql` again (it keeps the data). Until then the page works and shows initials, and an upload fails. | | | person |
 | R2.22 | worklist | Each lift has a category (power, strength, calf, accessory); a held block is isometric. | The program file did not say. The agent assigned each lift in `private/program/program.json` by its name: cleans, depth landing and the jump session as power; squats, Romanian deadlifts and the leg press as strength; the calf raises as calf; the Nordic and the cable abduction as accessory. The calf isometric lift is calf in the file and shows as isometric because its blocks are holds. | The page colours each category and always says it in words. The person corrects any lift in the file and runs `tools/seed.py` again. | `program.rs`, `screens.rs` | person |
 | R2.23 | worklist | The new categories reach the live page. | They are in the local program file only until the person runs `python3.13 tools/seed.py` again. | | | person |
+| R2.24 | worklist | Messages between athletes are the person's words. | The agent wrote every line (nine rival lines, three finish lines, and the "you beat" line); they are in the strings table below under `rival_first_`, `rival_heavy_`, `own_done_` and `own_ahead`. They tease the lead, never the person. | None changed. The person reads them and edits `data/strings.json` where a line misses. | `copy.rs` (tone lint) | person |
+| R2.25 | divergence | The person's multiple-choice answer picked only "first to finish" as a rivalry trigger. | Their first message also asked for a nudge when one athlete lifts more. | Both are built; the heavier-weight message compares the weight each logged on the same lift in the same session, and is off when nobody has logged a weight. Say so to turn it off. | `rivalry.rs`, `screens.rs` | person |
+| R2.26 | finding | A message can reach a phone that is closed. | It cannot: the page has no server to send from. The message shows the next time the athlete opens Today, only for the session on today's date, and once read it is kept on that phone. | The person chose the pop-up delivery. | `screens.rs` | done |
+| R2.27 | worklist | The live database holds checks and finishes. | Not until the person runs `supabase/schema.sql` again (it adds `logs` and `finishes` and two functions). Until then the page works and a tick fails with a message. | | | person |
 
 ## Strings written by the agent
 
@@ -276,3 +280,25 @@ Each reader-visible string the agent wrote, with its key, for the person to read
 | `cat_accessory` | Accessory |
 | `cat_isometric` | Isometric |
 | `legend_heading` | Colour key |
+| `popup_heading` | Message |
+| `popup_ok` | Got it |
+| `finish_button` | Finish session |
+| `finish_undo` | Finished. Tap to undo |
+| `session_finished` | Finished |
+| `progress_text` | {done} of {total} checked |
+| `set_box` | Set {n} |
+| `weight_label` | Weight (lb) |
+| `err_log` | That could not be saved. Check the weight. |
+| `own_done_1` | Session finished, {name}. {n} done this week. |
+| `own_done_2` | Done. That is {n} this week, {name}. |
+| `own_done_3` | {name} finished. Nice work, {n} this week. |
+| `own_ahead` | You beat {rival} to it. |
+| `rival_first_1` | {rival} already finished. Your move. |
+| `rival_first_2` | {rival} is done and probably stretching. You are still on the clock. |
+| `rival_first_3` | {rival} finished first. The scoreboard is not subtle. |
+| `rival_heavy_1` | {rival} logged {w} lb on {lift}. Just saying. |
+| `rival_heavy_2` | {rival} is at {w} lb on {lift}. Do not let that stand. |
+| `rival_heavy_3` | {lift}: {rival} {w} lb, you {mine}. Close the gap. |
+| `rival_mine` | {n} lb |
+| `rival_mine_none` | no weight yet |
+| `block_box` | Done |

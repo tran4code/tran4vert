@@ -17,6 +17,7 @@ pub mod moves;
 pub mod notes;
 pub mod page;
 pub mod program;
+pub mod rivalry;
 pub mod schedule;
 #[cfg(test)]
 mod testing;

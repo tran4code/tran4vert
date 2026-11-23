@@ -76,6 +76,28 @@ create table if not exists public.voice_notes (
   audio bytea not null check (octet_length(audio) between 1 and 2097152)
 );
 
+-- Sets and blocks an athlete has checked off, with the weight they gave.
+create table if not exists public.logs (
+  athlete int not null references public.athletes (id) on delete cascade,
+  cycle text not null,
+  week int not null check (week between 1 and 4),
+  dow int not null check (dow between 0 and 6),
+  block int not null check (block between 0 and 60),
+  set_no int not null check (set_no between 0 and 20),
+  weight int check (weight between 1 and 1500),
+  primary key (athlete, cycle, week, dow, block, set_no)
+);
+
+-- Sessions an athlete has finished, with the database's time, so "first to finish" has an order.
+create table if not exists public.finishes (
+  athlete int not null references public.athletes (id) on delete cascade,
+  cycle text not null,
+  week int not null check (week between 1 and 4),
+  dow int not null check (dow between 0 and 6),
+  at timestamptz not null default now(),
+  primary key (athlete, cycle, week, dow)
+);
+
 create table if not exists public.cycle_notes (
   cycle text primary key,
   text text not null check (char_length(text) between 1 and 500)
@@ -94,6 +116,8 @@ alter table public.voice_notes enable row level security;
 alter table public.cycle_notes enable row level security;
 alter table public.secrets enable row level security;
 alter table public.attempts enable row level security;
+alter table public.logs enable row level security;
+alter table public.finishes enable row level security;
 -- No policies on purpose: with row-level security on and no policy, the
 -- publishable key can read and write nothing in these tables directly.
 revoke all on all tables in schema public from anon, authenticated;
@@ -190,7 +214,13 @@ begin
     'notes', coalesce((select jsonb_agg(jsonb_build_object('id', id, 'lift', lift, 'title', title,
         'seconds', seconds, 'date', to_char(date, 'YYYY-MM-DD')) order by id) from public.voice_notes), '[]'::jsonb),
     'cycle_notes', coalesce((select jsonb_agg(jsonb_build_object('cycle', cycle, 'text', text) order by cycle)
-        from public.cycle_notes), '[]'::jsonb)
+        from public.cycle_notes), '[]'::jsonb),
+    'logs', coalesce((select jsonb_agg(jsonb_build_object('athlete', athlete, 'cycle', cycle, 'week', week,
+        'dow', dow, 'block', block, 'set', set_no, 'weight', weight) order by athlete, cycle, week, dow, block, set_no)
+        from public.logs), '[]'::jsonb),
+    'finishes', coalesce((select jsonb_agg(jsonb_build_object('athlete', athlete, 'cycle', cycle, 'week', week,
+        'dow', dow, 'at', to_char(at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')) order by at)
+        from public.finishes), '[]'::jsonb)
   );
 end $$;
 
@@ -316,6 +346,39 @@ begin
   if not found then raise exception 'no_such_athlete'; end if;
 end $$;
 
+create or replace function public.log_set(p_code text, p_athlete int, p_cycle text, p_week int, p_dow int,
+                                          p_block int, p_set int, p_weight int, p_done boolean)
+returns void language plpgsql security definer set search_path = public, extensions as $$
+begin
+  perform private.can_act(p_code, p_athlete);
+  if not exists (select 1 from public.athletes where id = p_athlete) then raise exception 'no_such_athlete'; end if;
+  if not exists (select 1 from public.program, jsonb_array_elements(body -> 'cycles') c
+                 where id = 1 and c ->> 'id' = p_cycle) then raise exception 'no_such_session'; end if;
+  if p_done then
+    insert into public.logs (athlete, cycle, week, dow, block, set_no, weight)
+    values (p_athlete, p_cycle, p_week, p_dow, p_block, p_set, p_weight)
+    on conflict (athlete, cycle, week, dow, block, set_no) do update set weight = excluded.weight;
+  else
+    delete from public.logs where athlete = p_athlete and cycle = p_cycle and week = p_week and dow = p_dow
+      and block = p_block and set_no = p_set;
+  end if;
+end $$;
+
+create or replace function public.finish_session(p_code text, p_athlete int, p_cycle text, p_week int, p_dow int, p_done boolean)
+returns void language plpgsql security definer set search_path = public, extensions as $$
+begin
+  perform private.can_act(p_code, p_athlete);
+  if not exists (select 1 from public.athletes where id = p_athlete) then raise exception 'no_such_athlete'; end if;
+  if not exists (select 1 from public.program, jsonb_array_elements(body -> 'cycles') c
+                 where id = 1 and c ->> 'id' = p_cycle) then raise exception 'no_such_session'; end if;
+  if p_done then
+    insert into public.finishes (athlete, cycle, week, dow) values (p_athlete, p_cycle, p_week, p_dow)
+    on conflict (athlete, cycle, week, dow) do nothing;
+  else
+    delete from public.finishes where athlete = p_athlete and cycle = p_cycle and week = p_week and dow = p_dow;
+  end if;
+end $$;
+
 create or replace function public.set_goal(p_code text, p_athlete int, p_goal int)
 returns void language plpgsql security definer set search_path = public, extensions as $$
 begin
@@ -351,7 +414,8 @@ end $$;
 revoke all on schema private from public, anon, authenticated;
 revoke execute on all functions in schema public from public, anon, authenticated;
 grant execute on function
-  public.get_names(), public.get_avatar(int), public.set_avatar(text, int, text, text), public.set_goal(text, int, int),
+  public.get_names(), public.get_avatar(int),
+  public.log_set(text, int, text, int, int, int, int, int, boolean), public.finish_session(text, int, text, int, int, boolean), public.set_avatar(text, int, text, text), public.set_goal(text, int, int),
   public.get_state(text), public.get_note_audio(text, bigint),
   public.add_max(text, int, text, int, text), public.delete_max(text, bigint),
   public.move_session(text, int, text, int, int, text), public.undo_move(text, int, text, int, int),

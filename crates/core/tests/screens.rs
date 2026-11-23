@@ -142,6 +142,20 @@ impl Page {
     }
 }
 
+/// Signs in with the sample data after a change to it (logs, finishes, ...).
+fn signed_in_with(today: &str, athlete: u64, change: impl FnOnce(&mut Value)) -> Page {
+    let mut data: Value = serde_json::from_str(&remote("athlete")).unwrap();
+    change(&mut data);
+    let mut p = Page::open(today);
+    p.act("data.load", &data.to_string());
+    p.act("athlete.pick", &athlete.to_string());
+    p
+}
+
+fn key(block: u32, set: u32) -> String {
+    json!({"cycle": "c1", "week": 1, "dow": 1, "block": block, "set": set}).to_string()
+}
+
 fn form(value: &str, fields: Value) -> String {
     json!({"value": value, "fields": fields}).to_string()
 }
@@ -1134,8 +1148,9 @@ fn offline_the_session_is_drawn_from_what_was_kept_and_changes_are_off() {
     assert!(p.has_panel(TUE_LIFT));
     assert!(p.text().contains("230 lb"));
     // Every change button is disabled, and the core refuses one anyway.
-    let move_button = p.panel(TUE_LIFT)["actions"][0].clone();
-    assert_eq!(move_button["name"], "move.start");
+    let actions = p.panel(TUE_LIFT)["actions"].as_array().unwrap().clone();
+    let finish = actions.iter().find(|a| a["name"] == "session.finish").unwrap();
+    assert_eq!(finish["enabled"], false);
     let e = p
         .try_act(
             "max.add",
@@ -1318,6 +1333,7 @@ fn every_string_in_the_strings_file_is_used_by_the_core_or_the_page() {
         "crates/core/src/view.rs",
         "crates/core/src/api.rs",
         "crates/core/src/page.rs",
+        "crates/core/src/rivalry.rs",
     ] {
         code.push_str(&read(path));
     }
@@ -1335,6 +1351,9 @@ fn every_string_in_the_strings_file_is_used_by_the_core_or_the_page() {
             "demo_athlete_",
             "hero_line_",
             "cat_",
+            "own_done_",
+            "rival_first_",
+            "rival_heavy_",
         ]
         .iter()
         .any(|p| key.starts_with(p))
@@ -1353,4 +1372,259 @@ fn every_string_in_the_strings_file_is_used_by_the_core_or_the_page() {
         }
     }
     assert!(unused.is_empty(), "strings nothing uses: {unused:?}");
+}
+
+// ---- checking things off, finishing, and the messages between athletes ----
+
+#[test]
+fn a_lift_has_a_check_box_for_each_set_and_a_weight_that_starts_at_the_working_weight() {
+    let p = Page::signed_in("2026-12-01", "athlete", 1);
+    // Tuesday: circuit (a check), squat 5 sets, press 3, kettle 3, pillar 3 = 15 boxes.
+    let squat = p.row("session-c1-1-1-b1");
+    assert_eq!(squat["sets"].as_array().unwrap().len(), 5);
+    assert_eq!(squat["sets"][0]["label"], "Set 1");
+    assert_eq!(squat["sets"][0]["pressed"], false);
+    // 305 at 75% is 230; 215 at 65% is 140; a lift with no percentage starts empty.
+    assert_eq!(squat["field"]["value"], "230");
+    assert_eq!(p.row("session-c1-1-1-b3")["field"]["value"], "140");
+    assert_eq!(p.row("session-c1-1-1-b2")["field"]["value"], "");
+    assert_eq!(p.row("session-c1-1-1-b0")["actions"][0]["name"], "block.toggle");
+    assert!(p.panel("session-c1-1-1")["text"]
+        .as_str()
+        .unwrap()
+        .ends_with("0 of 15 checked"));
+    // A coach's note alone has nothing to check.
+    let q = Page::signed_in("2026-11-30", "athlete", 1);
+    assert!(q.row("session-c1-1-0-b1").get("actions").is_none());
+}
+
+#[test]
+fn a_held_lift_and_an_amap_set_are_checked_without_a_weight_where_there_are_no_sets() {
+    let mut p = Page::signed_in("2026-12-04", "athlete", 1);
+    // Friday: the AMAP squat has no sets, so one check; the held lift has 3 set boxes and no weight.
+    let names: Vec<&str> = p.row("session-c1-1-4-b1")["actions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|a| s(&a["name"]))
+        .collect();
+    assert!(names.contains(&"block.toggle"), "{names:?}");
+    assert!(p.row("session-c1-1-4-b1").get("sets").is_none());
+    assert_eq!(p.row("session-c1-1-4-b2")["sets"].as_array().unwrap().len(), 3);
+    assert!(p.row("session-c1-1-4-b2").get("field").is_none());
+    p.act("net.offline", "");
+    assert_eq!(p.row("session-c1-1-4-b2")["sets"][0]["enabled"], false);
+}
+
+#[test]
+fn checking_a_set_sends_the_weight_typed_and_the_box_shows_checked_once_applied() {
+    let mut p = Page::signed_in("2026-12-01", "athlete", 1);
+    p.act("set.toggle", &form(&key(1, 2), json!({"weight": "235"})));
+    let r = &p.requests()[0];
+    assert_eq!(r["rpc"], "log_set");
+    assert_eq!(
+        r["args"],
+        json!({"athlete": 1, "cycle": "c1", "week": 1, "dow": 1, "block": 1, "set": 2, "weight": 235, "done": true})
+    );
+    let request = r.to_string();
+    p.act("data.apply", &request);
+    assert_eq!(p.row("session-c1-1-1-b1")["sets"][1]["pressed"], true);
+    assert_eq!(p.row("session-c1-1-1-b1")["sets"][0]["pressed"], false);
+    assert!(p.panel("session-c1-1-1")["text"]
+        .as_str()
+        .unwrap()
+        .ends_with("1 of 15 checked"));
+    // The weight now starts at what was logged.
+    assert_eq!(p.row("session-c1-1-1-b1")["field"]["value"], "235");
+    // Tapping it again unchecks it.
+    p.act("set.toggle", &form(&key(1, 2), json!({"weight": "235"})));
+    assert_eq!(p.requests()[0]["args"]["done"], false);
+}
+
+#[test]
+fn a_bad_weight_or_a_set_that_is_not_there_is_refused_in_words() {
+    let mut p = Page::signed_in("2026-12-01", "athlete", 1);
+    assert_eq!(
+        p.try_act("set.toggle", &form(&key(1, 1), json!({"weight": "heavy"})))
+            .unwrap_err(),
+        "Type the weight as a whole number of pounds."
+    );
+    for (k, w) in [
+        (key(1, 1), "0"),
+        (key(1, 1), "99999"),
+        (key(1, 21), "100"),
+        (key(40, 1), "100"),
+    ] {
+        assert_eq!(
+            p.try_act("set.toggle", &form(&k, json!({"weight": w})))
+                .unwrap_err(),
+            "That could not be saved. Check the weight.",
+            "{k} {w}"
+        );
+    }
+    p.act("block.toggle", &form(&key(0, 0), json!({})));
+    assert_eq!(p.requests()[0]["args"]["set"], 0);
+}
+
+#[test]
+fn finishing_a_session_shows_finished_and_an_encouraging_message_that_names_who_was_beaten() {
+    let mut p = Page::signed_in("2026-12-01", "athlete", 1);
+    p.act(
+        "session.finish",
+        &json!({"cycle": "c1", "week": 1, "dow": 1}).to_string(),
+    );
+    assert_eq!(p.requests()[0]["rpc"], "finish_session");
+    assert_eq!(p.requests()[0]["args"]["done"], true);
+    let request = p.requests()[0].to_string();
+    p.act("data.apply", &request);
+    assert_eq!(p.panel("session-c1-1-1")["marker"], "Finished");
+    assert_eq!(
+        p.panel("session-c1-1-1")["actions"][0]["name"],
+        "session.unfinish"
+    );
+    assert_eq!(
+        p.panel("popup")["text"],
+        "Sam finished. Nice work, 1 this week. You beat Jo to it."
+    );
+    let id = p.panel("popup")["actions"][0]["value"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    assert_eq!(id, "own:1:c1:1:1");
+    p.act("msg.dismiss", &id);
+    assert!(!p.has_panel("popup"));
+    assert_eq!(p.ui["seen"], json!(["own:1:c1:1:1"]).to_string());
+    // Undoing the finish takes the marker away.
+    p.act(
+        "session.unfinish",
+        &json!({"cycle": "c1", "week": 1, "dow": 1}).to_string(),
+    );
+    assert_eq!(p.requests()[0]["args"]["done"], false);
+}
+
+#[test]
+fn when_a_rival_finishes_first_the_other_athlete_gets_a_message_once() {
+    let finish = |data: &mut Value| {
+        data["finishes"] =
+            json!([{"athlete": 2, "cycle": "c1", "week": 1, "dow": 1, "at": "2026-12-01T09:00:00Z"}]);
+    };
+    let mut p = signed_in_with("2026-12-01", 1, finish);
+    // For athlete 1 and rival 2 on a Tuesday, the second wording is used.
+    assert_eq!(
+        p.panel("popup")["text"],
+        "Jo is done and probably stretching. You are still on the clock."
+    );
+    // It comes first on the screen.
+    assert_eq!(p.ui["panels"][0]["id"], "popup");
+    p.act("msg.dismiss", "first:1:2:c1:1:1");
+    assert!(!p.has_panel("popup"));
+    // The phone remembers it across visits.
+    let mut again = signed_in_with("2026-12-01", 1, finish);
+    again.act("seen.load", &json!(["first:1:2:c1:1:1"]).to_string());
+    assert!(!again.has_panel("popup"));
+    assert!(again.try_act("seen.load", "not json").is_ok());
+    assert!(
+        again.has_panel("popup"),
+        "an unreadable list means the message shows again"
+    );
+    // Athlete 2 sees no message about their own finish being late, and a finish on another day is not today's news.
+    let other_day = |data: &mut Value| {
+        data["finishes"] = json!([{"athlete": 2, "cycle": "c1", "week": 1, "dow": 0, "at": "x"}]);
+    };
+    assert!(!signed_in_with("2026-12-01", 1, other_day).has_panel("popup"));
+}
+
+#[test]
+fn a_rival_with_more_weight_on_the_same_lift_gets_a_message_with_the_numbers() {
+    let heavy = |data: &mut Value| {
+        data["logs"] = json!([
+            {"athlete": 2, "cycle": "c1", "week": 1, "dow": 1, "block": 1, "set": 1, "weight": 300},
+            {"athlete": 1, "cycle": "c1", "week": 1, "dow": 1, "block": 1, "set": 1, "weight": 285}
+        ]);
+    };
+    // Athlete 1 logged 285, rival 2 logged 300 on the Tuesday squat (athlete 1 and 2, Tuesday: wording 2).
+    let p = signed_in_with("2026-12-01", 1, heavy);
+    assert_eq!(
+        p.panel("popup")["text"],
+        "Jo is at 300 lb on Anvil Squat. Do not let that stand."
+    );
+    // The other way round, the lighter one gets no message about the heavier one's lead being theirs.
+    let lead = signed_in_with("2026-12-01", 2, heavy);
+    assert!(!lead.has_panel("popup"), "the one in front is not nudged");
+    // Wording 3 shows the athlete's own number, or that there is none yet.
+    let ahead = |data: &mut Value| {
+        data["logs"] =
+            json!([{"athlete": 1, "cycle": "c1", "week": 1, "dow": 1, "block": 1, "set": 1, "weight": 305}]);
+    };
+    let pat = signed_in_with("2026-12-01", 3, ahead);
+    assert_eq!(
+        pat.panel("popup")["text"],
+        "Anvil Squat: Sam 305 lb, you no weight yet. Close the gap."
+    );
+    let with_mine = |data: &mut Value| {
+        data["logs"] = json!([
+            {"athlete": 1, "cycle": "c1", "week": 1, "dow": 1, "block": 1, "set": 1, "weight": 305},
+            {"athlete": 3, "cycle": "c1", "week": 1, "dow": 1, "block": 1, "set": 1, "weight": 290}
+        ]);
+    };
+    assert_eq!(
+        signed_in_with("2026-12-01", 3, with_mine).panel("popup")["text"],
+        "Anvil Squat: Sam 305 lb, you 290 lb. Close the gap."
+    );
+}
+
+#[test]
+fn a_finish_message_comes_before_a_weight_message() {
+    let both = |data: &mut Value| {
+        data["finishes"] = json!([{"athlete": 2, "cycle": "c1", "week": 1, "dow": 1, "at": "x"}]);
+        data["logs"] =
+            json!([{"athlete": 2, "cycle": "c1", "week": 1, "dow": 1, "block": 1, "set": 1, "weight": 300}]);
+    };
+    let mut p = signed_in_with("2026-12-01", 1, both);
+    assert!(p.panel("popup")["text"]
+        .as_str()
+        .unwrap()
+        .starts_with("Jo is done"));
+    p.act("msg.dismiss", "first:1:2:c1:1:1");
+    assert!(p.panel("popup")["text"]
+        .as_str()
+        .unwrap()
+        .starts_with("Jo is at 300 lb"));
+}
+
+#[test]
+fn equal_weights_get_no_message_and_two_athletes_on_one_phone_each_read_their_own() {
+    let equal = |data: &mut Value| {
+        data["logs"] = json!([
+            {"athlete": 2, "cycle": "c1", "week": 1, "dow": 1, "block": 1, "set": 1, "weight": 300},
+            {"athlete": 1, "cycle": "c1", "week": 1, "dow": 1, "block": 1, "set": 1, "weight": 300}
+        ]);
+    };
+    assert!(
+        !signed_in_with("2026-12-01", 1, equal).has_panel("popup"),
+        "level is not behind"
+    );
+    // The coach's phone, two athletes: reading one athlete's message does not hide the other's.
+    let mut c = Page::signed_in("2026-12-01", "coach", 1);
+    let finish = |c: &mut Page, athlete: u64| {
+        c.act("athlete.pick", &athlete.to_string());
+        c.act(
+            "session.finish",
+            &json!({"cycle": "c1", "week": 1, "dow": 1}).to_string(),
+        );
+        let request = c.requests()[0].to_string();
+        c.act("data.apply", &request);
+    };
+    finish(&mut c, 1);
+    let id = c.panel("popup")["actions"][0]["value"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    c.act("msg.dismiss", &id);
+    finish(&mut c, 2);
+    assert!(
+        c.has_panel("popup"),
+        "the second athlete's own message is not already read"
+    );
+    assert_ne!(c.panel("popup")["actions"][0]["value"].as_str().unwrap(), id);
 }

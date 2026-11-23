@@ -36,6 +36,12 @@ def text(page, selector):
     return (page.text_content(selector) or "").strip()
 
 
+def dismiss_all(page):
+    """Reads every message on the screen; a message covers the page until it is read."""
+    while page.query_selector("#popup button"):
+        page.click("#popup button:text-is('Got it')")
+
+
 def screen(page, name):
     page.wait_for_selector(f"body[data-screen='{name}']", state="attached")
 
@@ -175,6 +181,23 @@ def run(page, check, engine):
         "the working weight follows the new max: 315 at 75% is 236.25, which rounds to 235",
     )
 
+    # --- checking things off, finishing, and the message that follows ---
+    nav(page, "Today")
+    page.fill("#session-c1-1-1-b1-weight", "235")
+    page.click("[data-row='session-c1-1-1-b1'] button.check:text-is('Set 1')")
+    page.wait_for_selector("[data-row='session-c1-1-1-b1'] button.check[aria-pressed='true']", state="attached")
+    check("1 of 15 checked" in text(page, "#session-c1-1-1 > p"), f"checking a set updates the progress {text(page, '#session-c1-1-1 > p')!r}")
+    check(page.input_value("#session-c1-1-1-b1-weight") == "235", "the weight typed stays after checking a set")
+    page.click("#session-c1-1-1 button:text-is('Finish session')")
+    page.wait_for_selector("#popup .card", state="attached")
+    check(
+        text(page, "#popup p") == "Sam finished. Nice work, 1 this week. You beat Jo to it.",
+        f"finishing shows an encouraging message that names who was beaten {text(page, '#popup p')!r}",
+    )
+    page.click("#popup button:text-is('Got it')")
+    check(page.query_selector("#popup") is None, "the message goes away once read")
+    check(text(page, "#session-c1-1-1 .marker") == "Finished", "the finished session is marked")
+
     # --- cycles ---
     nav(page, "Cycles")
     screen(page, "cycles")
@@ -190,6 +213,35 @@ def run(page, check, engine):
     page.click("[data-row='athlete-1'] button")
     screen(page, "today")
     check("Coach" in [(b.text_content() or "").strip() for b in page.query_selector_all("#nav button")], "the coach has a Coach screen")
+    page.click("[data-row='session-c1-1-1-b1'] button:text-is('Open lift')")
+    screen(page, "lift")
+    # a rival finishes first: Jo (the coach can log for anyone) finishes, then Pat is nudged
+    page.click("#who button")
+    page.click("[data-row='athlete-2'] button")
+    screen(page, "today")
+    # Sam finished first today, so Jo is nudged before doing anything else
+    page.wait_for_selector("#popup .card", state="attached")
+    check(text(page, "#popup p").startswith("Sam"), f"the one who finished second is nudged {text(page, '#popup p')!r}")
+    page.click("#popup button:text-is('Got it')")
+    # a second message may follow (Sam's weight); read them all before the page is free to tap
+    dismiss_all(page)
+    page.click("#session-c1-1-1 button:text-is('Finish session')")
+    page.wait_for_selector("#popup", state="attached")
+    dismiss_all(page)
+    page.click("#who button")
+    page.click("[data-row='athlete-3'] button")
+    page.wait_for_selector("#popup .card", state="attached")
+    page.click("#popup button:text-is('Got it')")
+    page.wait_for_selector("#popup .card", state="attached")
+    check(
+        text(page, "#popup p") == "Jo already finished. Your move.",
+        f"when a rival finishes first the other athlete is nudged, one message at a time {text(page, '#popup p')!r}",
+    )
+    dismiss_all(page)
+    page.click("#who button")
+    page.click("[data-row='athlete-1'] button")
+    screen(page, "today")
+    dismiss_all(page)
     page.click("[data-row='session-c1-1-1-b1'] button:text-is('Open lift')")
     screen(page, "lift")
     check(page.query_selector("#recorder") is not None, "the coach sees the recorder on a lift")

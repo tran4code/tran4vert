@@ -15,6 +15,8 @@ use crate::program::Program;
 
 /// The heaviest weight the app accepts, in lb.
 pub const MAX_WEIGHT: u32 = 1500;
+/// The most sets a block can have checked off.
+pub const MAX_SETS: u32 = 20;
 /// The longest voice note, in seconds. The page's recorder stops here.
 pub const MAX_NOTE_SECONDS: u32 = 180;
 /// The longest voice note title, in characters.
@@ -77,6 +79,32 @@ pub struct NoteRec {
     pub date: String,
 }
 
+/// One set (or, with `set` 0, one whole block) an athlete has checked off in a session.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LogRec {
+    pub athlete: u64,
+    pub cycle: String,
+    pub week: u32,
+    pub dow: u8,
+    /// The block's place in the day, from 0.
+    pub block: u32,
+    /// The set, from 1; 0 for a block with no sets.
+    pub set: u32,
+    /// The weight lifted, in lb, when the athlete gave one.
+    #[serde(default)]
+    pub weight: Option<u32>,
+}
+
+/// An athlete finished a session. `at` orders finishes: the database's time, or a counter in the demo.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct FinishRec {
+    pub athlete: u64,
+    pub cycle: String,
+    pub week: u32,
+    pub dow: u8,
+    pub at: String,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CycleNoteRec {
     pub cycle: String,
@@ -96,6 +124,10 @@ pub struct Data {
     pub notes: Vec<NoteRec>,
     #[serde(default)]
     pub cycle_notes: Vec<CycleNoteRec>,
+    #[serde(default)]
+    pub logs: Vec<LogRec>,
+    #[serde(default)]
+    pub finishes: Vec<FinishRec>,
     /// `coach` when the passcode given was the coach's, else `athlete`.
     #[serde(default)]
     pub role: String,
@@ -272,6 +304,73 @@ pub fn apply(data: &mut Data, request: &Request) -> Result<(), String> {
                 .ok_or_else(|| format!("There is no athlete {athlete}."))?;
             rec.goal = Some(goal);
         }
+        "log_set" => {
+            let rec = LogRec {
+                athlete: number(a, "athlete")?,
+                cycle: text(a, "cycle")?.to_string(),
+                week: u32::try_from(number(a, "week")?).map_err(|_| "The week is too large.".to_string())?,
+                dow: u8::try_from(number(a, "dow")?).map_err(|_| "The day is too large.".to_string())?,
+                block: u32::try_from(number(a, "block")?)
+                    .map_err(|_| "The block is too large.".to_string())?,
+                set: u32::try_from(number(a, "set")?).map_err(|_| "The set is too large.".to_string())?,
+                weight: match a.get("weight") {
+                    Some(Value::Null) | None => None,
+                    Some(_) => Some(
+                        u32::try_from(number(a, "weight")?)
+                            .map_err(|_| "The weight is too large.".to_string())?,
+                    ),
+                },
+            };
+            let done = a
+                .get("done")
+                .and_then(Value::as_bool)
+                .ok_or("The request lacks \"done\".")?;
+            if data.athlete(rec.athlete).is_none() {
+                return Err(format!("There is no athlete {}.", rec.athlete));
+            }
+            let slot = crate::moves::find_slot(data, &rec.cycle, rec.week, rec.dow)
+                .ok_or_else(|| "That session is not in the program.".to_string())?;
+            if rec.block as usize >= slot.day.blocks.len() || rec.set > MAX_SETS {
+                return Err("That block or set is not in the session.".into());
+            }
+            if rec.weight.is_some_and(|w| w == 0 || w > MAX_WEIGHT) {
+                return Err("The weight is out of range.".into());
+            }
+            data.logs.retain(|l| !same_log(l, &rec));
+            if done {
+                data.logs.push(rec);
+            }
+        }
+        "finish_session" => {
+            let rec = FinishRec {
+                athlete: number(a, "athlete")?,
+                cycle: text(a, "cycle")?.to_string(),
+                week: u32::try_from(number(a, "week")?).map_err(|_| "The week is too large.".to_string())?,
+                dow: u8::try_from(number(a, "dow")?).map_err(|_| "The day is too large.".to_string())?,
+                at: String::new(),
+            };
+            let done = a
+                .get("done")
+                .and_then(Value::as_bool)
+                .ok_or("The request lacks \"done\".")?;
+            if data.athlete(rec.athlete).is_none() {
+                return Err(format!("There is no athlete {}.", rec.athlete));
+            }
+            if crate::moves::find_slot(data, &rec.cycle, rec.week, rec.dow).is_none() {
+                return Err("That session is not in the program.".into());
+            }
+            data.finishes.retain(|f| {
+                !(f.athlete == rec.athlete && f.cycle == rec.cycle && f.week == rec.week && f.dow == rec.dow)
+            });
+            if done {
+                // The demo has no database clock: a counter keeps the order of finishes.
+                let seq = data.finishes.len() + 1;
+                data.finishes.push(FinishRec {
+                    at: format!("demo-{seq:06}"),
+                    ..rec
+                });
+            }
+        }
         "set_avatar" => {
             let athlete = number(a, "athlete")?;
             data.athletes
@@ -294,6 +393,15 @@ pub fn apply(data: &mut Data, request: &Request) -> Result<(), String> {
         other => return Err(format!("Unknown request \"{other}\".")),
     }
     Ok(())
+}
+
+fn same_log(a: &LogRec, b: &LogRec) -> bool {
+    a.athlete == b.athlete
+        && a.cycle == b.cycle
+        && a.week == b.week
+        && a.dow == b.dow
+        && a.block == b.block
+        && a.set == b.set
 }
 
 fn same_session(a: &MoveRec, b: &MoveRec) -> bool {

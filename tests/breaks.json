@@ -453,5 +453,61 @@
     "find": "        row.chips = CATEGORIES\n            .iter()\n            .filter(|c| held.contains(c))",
     "replace": "        row.chips = CATEGORIES\n            .iter()\n            .rev()\n            .filter(|c| held.contains(c))",
     "test": "the_week_shows_the_categories_each_day_holds_in_a_fixed_order_and_a_colour_key"
+  },
+  {
+    "name": "a set shows checked when it is not",
+    "file": "crates/core/src/view.rs",
+    "find": "                let on = logged(i, n).is_some();",
+    "replace": "                let on = logged(i, n).is_none();",
+    "test": "checking_a_set_sends_the_weight_typed_and_the_box_shows_checked_once_applied"
+  },
+  {
+    "name": "the weight starts at the plan, not the last one logged",
+    "file": "crates/core/src/view.rs",
+    "find": "let start = last.or(planned)",
+    "replace": "let start = planned.or(last)",
+    "test": "checking_a_set_sends_the_weight_typed_and_the_box_shows_checked_once_applied"
+  },
+  {
+    "name": "an unfinish is sent as a finish",
+    "file": "crates/core/src/api.rs",
+    "find": "\"done\": name == \"session.finish\"}",
+    "replace": "\"done\": true}",
+    "test": "finishing_a_session_shows_finished_and_an_encouraging_message_that_names_who_was_beaten"
+  },
+  {
+    "name": "no encouragement after finishing",
+    "file": "crates/core/src/rivalry.rs",
+    "find": "        if finished(me.id).is_some() {",
+    "replace": "        if finished(me.id).is_none() && false {",
+    "test": "finishing_a_session_shows_finished_and_an_encouraging_message_that_names_who_was_beaten"
+  },
+  {
+    "name": "a level weight counts as behind",
+    "file": "crates/core/src/rivalry.rs",
+    "find": "mine.is_none_or(|m| *w > m)",
+    "replace": "mine.is_none_or(|m| *w >= m)",
+    "test": "equal_weights_get_no_message_and_two_athletes_on_one_phone_each_read_their_own"
+  },
+  {
+    "name": "a read message comes back",
+    "file": "crates/core/src/rivalry.rs",
+    "find": "    out.retain(|m| !seen.contains(&m.id));",
+    "replace": "    let _ = seen;",
+    "test": "when_a_rival_finishes_first_the_other_athlete_gets_a_message_once"
+  },
+  {
+    "name": "a message does not name its athlete",
+    "file": "crates/core/src/rivalry.rs",
+    "find": "id: format!(\"own:{}:{key}\", me.id),",
+    "replace": "id: format!(\"own:{key}\"),",
+    "test": "equal_weights_get_no_message_and_two_athletes_on_one_phone_each_read_their_own"
+  },
+  {
+    "name": "the set boxes stay on when offline",
+    "file": "crates/core/src/api.rs",
+    "find": "for a in r.sets.iter_mut().chain(r.actions.iter_mut()) {",
+    "replace": "for a in r.actions.iter_mut() {",
+    "test": "a_held_lift_and_an_amap_set_are_checked_without_a_weight_where_there_are_no_sets"
   }
 ]
