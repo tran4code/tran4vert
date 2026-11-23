@@ -44,6 +44,13 @@ def fake_microphone(page):
 
 
 def run(page, check, engine):
+    # With a project address in the page, the first screen is the passcode screen and
+    # nothing has been sent. The rest of the live path is tests/browser/live_mock.py;
+    # the demo interactions below run on a demo copy of dist/ (tests/browser/run_demo.py).
+    if page.get_attribute("body", "data-screen") == "passcode":
+        check(page.query_selector("#passcode-group") is not None, "the passcode screen asks for the group passcode")
+        check(page.query_selector("#nav button") is None or page.is_hidden("#nav"), "no screens are offered before a passcode")
+        return
     # --- the first screen, with a date we know ---
     page.clock.install(time=TODAY)
     page.reload()

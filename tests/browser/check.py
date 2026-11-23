@@ -38,7 +38,8 @@ import threading
 from playwright.sync_api import sync_playwright
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-DIST = ROOT / "dist"
+# BUILDER_DIST lets a project check a variant of dist/ (this one checks a demo copy).
+DIST = pathlib.Path(os.environ.get("BUILDER_DIST", ROOT / "dist"))
 ENGINES = os.environ.get("BUILDER_ENGINES", "chromium firefox webkit").split()
 IDLE_MS = int(float(os.environ.get("BUILDER_IDLE", "10")) * 1000)
 

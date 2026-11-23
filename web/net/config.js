@@ -4,6 +4,6 @@
 // closed to it except through functions that check the passcode (supabase/schema.sql).
 // Left empty, the page runs as a demo with made-up data and makes no request.
 export const config = {
-  url: "",
-  key: "",
+  url: "https://eqkromjfmsarwtzomtvs.supabase.co",
+  key: "sb_publishable_PgfKMvcKgDHDo71AV76BIA_wYsGDfvn",
 };

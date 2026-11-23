@@ -44,7 +44,10 @@ step "8/10 design journal (scripts/journal_check.py)"
 step "9/10 browser check: demo mode, then the live path against a pretend database (tests/browser/)"
 # This project runs the phone profile too (BRIEF.md: iPhone Safari first).
 export BUILDER_ENGINES="${BUILDER_ENGINES:-chromium firefox webkit webkit-iphone}"
-"$PY" tests/browser/check.py
+# The page as built points at the real project: first load and idle must send nothing.
+BUILDER_ENGINES="chromium" "$PY" tests/browser/check.py
+# The demo interactions run on a copy with the address cleared.
+"$PY" tests/browser/run_demo.py
 "$PY" tests/browser/live_mock.py
 
 step "10/10 nothing private is in a tracked or published file (scripts/leak_check.py)"

@@ -4,7 +4,7 @@ Stage 9, written by the build agent on 2026-11-23. A fresh session starts from t
 
 ## What this is
 
-A phone web page for three friends on the same four-week-cycle jump-training program. An athlete enters a group passcode, taps their name, and sees today's session and the week, with working weights worked out from their own maxes. The coach records voice notes against a lift and can move sessions; a cycles screen shows what is not loaded yet. Static files (GitHub Pages) plus a free Supabase project reached only through passcode-checking functions. Nothing is published, pushed or created on any service.
+A phone web page (opened from a link in Safari, not an app store app) for three friends on the same four-week-cycle jump-training program. An athlete enters a group passcode, taps their name, and sees today's session and the week, with working weights worked out from their own maxes. The coach records voice notes against a lift and can move sessions; a cycles screen shows what is not loaded yet. Static files (GitHub Pages) plus a free Supabase project reached only through passcode-checking functions. Nothing is published, pushed or created on any service.
 
 ## Rules that hold it up
 
@@ -71,7 +71,7 @@ Set `DEVELOPER_DIR=/Library/Developer/CommandLineTools` first if the Xcode licen
 | R2.1 | Accept the Xcode license (`sudo xcodebuild -license accept`) or keep the environment variable |
 | R2.10 | Check voice-note playback on a phone with the live project |
 | R2.12 | Run `supabase/schema.sql`, then `tools/remote_check.py`; the SQL has never been run |
-| R2.13 | Create the Supabase project, type both passcodes into its SQL editor, add the three athletes, give the agent the address and the publishable key only, run `tools/seed.py`, set start dates |
+| R2.13 | The project exists and its address and publishable key are in the page (done 2026-11-23). Still yours: run the schema, type both passcodes into the SQL editor, add the three athletes, run `tools/seed.py`, set start dates |
 | R2.14 | Read the agent-written strings at the foot of `SECOND-ORDER.md` |
 | R2.16 | Which max the cycle 2 squat percentage refers to |
 
@@ -87,4 +87,4 @@ By system, from `SECOND-ORDER.md`: the build environment (R2.1, R2.2), a binary 
 
 ## The next action
 
-Give the agent the Supabase project's address and publishable key, and nothing else.
+In the Supabase SQL editor, run `supabase/schema.sql`, then `select set_passcode('group', '...')`, `select set_passcode('coach', '...')` with passcodes of your own, and add the three athletes. Then run `python3.13 tools/seed.py` and `python3.13 tools/remote_check.py`.
