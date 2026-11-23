@@ -238,7 +238,6 @@
   "session_finished": "Finished",
   "progress_text": "{done} of {total} checked",
   "set_box": "Set {n}",
-  "weight_label": "Weight (lb)",
   "err_log": "That could not be saved. Check the weight.",
   "own_done_1": "Session finished, {name}. {n} done this week.",
   "own_done_2": "Done. That is {n} this week, {name}.",
@@ -252,5 +251,11 @@
   "rival_heavy_3": "{lift}: {rival} {w} lb, you {mine}. Close the gap.",
   "rival_mine": "{n} lb",
   "rival_mine_none": "no weight yet",
-  "block_box": "Done"
+  "block_box": "Done",
+  "set_weight": "Set {n} weight (lb)",
+  "set_progress_ramp": "Warm-up {a} of {b}, working sets {c} of {d}",
+  "set_progress": "{a} of {b} sets",
+  "lift_complete": "Complete",
+  "finish_ready": "Everything is checked. Finish session",
+  "set_box_working": "Set {n} (working)"
 }

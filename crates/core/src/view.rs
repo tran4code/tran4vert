@@ -14,7 +14,7 @@ use crate::notes;
 use crate::page::Strings;
 use crate::program::{Block, BlockKind, Cycle, LibraryItem, CATEGORIES};
 use crate::schedule::{self, CYCLE_WEEKS};
-use crate::ui::{Action, Choice, Field, Header, NavItem, Panel, Row};
+use crate::ui::{Action, Choice, Field, Header, NavItem, Panel, Row, SetBox};
 
 /// Action names that change shared data; they are off while the phone is offline.
 pub const CHANGES: [&str; 18] = [
@@ -533,11 +533,14 @@ pub fn day_panels(ctx: &Ctx, date: i64) -> Vec<Panel> {
                         &s.t("finish_undo"),
                     ));
                 } else {
-                    p.actions.push(Action::new(
-                        "session.finish",
-                        &key_value(&key),
-                        &s.t("finish_button"),
-                    ));
+                    // When every box is checked the button says so.
+                    let label = if total > 0 && done == total {
+                        s.t("finish_ready")
+                    } else {
+                        s.t("finish_button")
+                    };
+                    p.actions
+                        .push(Action::new("session.finish", &key_value(&key), &label));
                 }
                 p.actions
                     .push(Action::new("move.start", &key_value(&key), &s.t("move_button")));
@@ -639,25 +642,84 @@ fn checks(
             .unwrap_or(0)
             .min(crate::data::MAX_SETS);
         if block.lift.is_some() && sets > 0 {
+            // The program names a percentage for the last sets; the ones before are the athlete's own ramp-up.
+            let working_from = match &block.pct {
+                Some(p) => sets.saturating_sub(p.last) + 1,
+                None => 1,
+            };
+            let planned = block
+                .pct
+                .as_ref()
+                .and_then(|p| maxes::weight_for(ctx.data, me, &p.of, p.pct, date))
+                .map(|w| w.weight);
+            let (mut ramp_done, mut ramp_total, mut work_done, mut work_total) = (0, 0, 0, 0);
+            let mut carried: Option<u32> = None;
             for n in 1..=sets {
-                let on = logged(i, n).is_some();
+                let log = logged(i, n);
+                let on = log.is_some();
+                // Only a lift with a prescribed percentage has working sets, marked as such.
+                let working = block.pct.is_some() && n >= working_from;
                 total += 1;
                 done += usize::from(on);
-                row.sets.push(
-                    Action::new("set.toggle", &value(n), &s.f("set_box", &[("n", &n.to_string())]))
-                        .pressed(on),
+                if working {
+                    work_total += 1;
+                    work_done += usize::from(on);
+                } else {
+                    ramp_total += 1;
+                    ramp_done += usize::from(on);
+                }
+                let label = s.f(
+                    if working { "set_box_working" } else { "set_box" },
+                    &[("n", &n.to_string())],
                 );
+                let action = Action::new("set.toggle", &value(n), &label).pressed(on);
+                // A set shows the weight logged for it; a working set starts at the plan, and a lift with no
+                // plan starts at the weight of the set before. A ramp-up set starts empty.
+                let field = if block.hold {
+                    None
+                } else {
+                    let shown = log.and_then(|l| l.weight).or(if working {
+                        planned
+                    } else if block.pct.is_none() {
+                        carried
+                    } else {
+                        None
+                    });
+                    carried = log.and_then(|l| l.weight).or(carried);
+                    Some(Field::new(
+                        "weight",
+                        &s.f("set_weight", &[("n", &n.to_string())]),
+                        "number",
+                        &shown.map(|w| w.to_string()).unwrap_or_default(),
+                    ))
+                };
+                row.sets.push(SetBox {
+                    action,
+                    field,
+                    working,
+                });
             }
-            if !block.hold {
-                // The weight typed for the sets: the last one logged, else the working weight.
-                let last = (1..=sets).rev().find_map(|n| logged(i, n).and_then(|l| l.weight));
-                let planned = block
-                    .pct
-                    .as_ref()
-                    .and_then(|p| maxes::weight_for(ctx.data, me, &p.of, p.pct, date))
-                    .map(|w| w.weight);
-                let start = last.or(planned).map(|w| w.to_string()).unwrap_or_default();
-                row.field = Some(Field::new("weight", &s.t("weight_label"), "number", &start));
+            row.progress = if block.pct.is_some() && ramp_total > 0 {
+                s.f(
+                    "set_progress_ramp",
+                    &[
+                        ("a", &ramp_done.to_string()),
+                        ("b", &ramp_total.to_string()),
+                        ("c", &work_done.to_string()),
+                        ("d", &work_total.to_string()),
+                    ],
+                )
+            } else {
+                s.f(
+                    "set_progress",
+                    &[
+                        ("a", &(ramp_done + work_done).to_string()),
+                        ("b", &sets.to_string()),
+                    ],
+                )
+            };
+            if ramp_done + work_done == sets as usize {
+                row.marker = s.t("lift_complete");
             }
         } else if block.kind() != Some(BlockKind::Note) {
             let on = logged(i, 0).is_some();

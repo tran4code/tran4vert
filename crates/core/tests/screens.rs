@@ -1382,12 +1382,32 @@ fn a_lift_has_a_check_box_for_each_set_and_a_weight_that_starts_at_the_working_w
     // Tuesday: circuit (a check), squat 5 sets, press 3, kettle 3, pillar 3 = 15 boxes.
     let squat = p.row("session-c1-1-1-b1");
     assert_eq!(squat["sets"].as_array().unwrap().len(), 5);
-    assert_eq!(squat["sets"][0]["label"], "Set 1");
-    assert_eq!(squat["sets"][0]["pressed"], false);
-    // 305 at 75% is 230; 215 at 65% is 140; a lift with no percentage starts empty.
-    assert_eq!(squat["field"]["value"], "230");
-    assert_eq!(p.row("session-c1-1-1-b3")["field"]["value"], "140");
-    assert_eq!(p.row("session-c1-1-1-b2")["field"]["value"], "");
+    assert_eq!(squat["sets"][0]["action"]["label"], "Set 1");
+    assert_eq!(squat["sets"][0]["action"]["pressed"], false);
+    // The program names 75% for the last 2 of 5 sets: 305 at 75% is 230 for sets 4 and 5. Sets 1 to 3 are the
+    // athlete's own ramp-up and start empty. 215 at 65% is 140 for the last of 3; a lift with no plan starts empty.
+    let value = |row: &str, n: usize| {
+        p.row(row)["sets"][n]["field"]["value"]
+            .as_str()
+            .unwrap()
+            .to_string()
+    };
+    assert_eq!(
+        (0..5).map(|n| value("session-c1-1-1-b1", n)).collect::<Vec<_>>(),
+        vec!["", "", "", "230", "230"]
+    );
+    assert_eq!(squat["sets"][3]["working"], true);
+    assert_eq!(squat["sets"][3]["action"]["label"], "Set 4 (working)");
+    assert_eq!(p.row("session-c1-1-1-b2")["sets"][0]["working"], false);
+    assert_eq!(squat["sets"][2]["working"], false);
+    assert_eq!(
+        (0..3).map(|n| value("session-c1-1-1-b3", n)).collect::<Vec<_>>(),
+        vec!["", "", "140"]
+    );
+    assert_eq!(
+        (0..3).map(|n| value("session-c1-1-1-b2", n)).collect::<Vec<_>>(),
+        vec!["", "", ""]
+    );
     assert_eq!(p.row("session-c1-1-1-b0")["actions"][0]["name"], "block.toggle");
     assert!(p.panel("session-c1-1-1")["text"]
         .as_str()
@@ -1411,9 +1431,9 @@ fn a_held_lift_and_an_amap_set_are_checked_without_a_weight_where_there_are_no_s
     assert!(names.contains(&"block.toggle"), "{names:?}");
     assert!(p.row("session-c1-1-4-b1").get("sets").is_none());
     assert_eq!(p.row("session-c1-1-4-b2")["sets"].as_array().unwrap().len(), 3);
-    assert!(p.row("session-c1-1-4-b2").get("field").is_none());
+    assert!(p.row("session-c1-1-4-b2")["sets"][0].get("field").is_none());
     p.act("net.offline", "");
-    assert_eq!(p.row("session-c1-1-4-b2")["sets"][0]["enabled"], false);
+    assert_eq!(p.row("session-c1-1-4-b2")["sets"][0]["action"]["enabled"], false);
 }
 
 #[test]
@@ -1428,14 +1448,16 @@ fn checking_a_set_sends_the_weight_typed_and_the_box_shows_checked_once_applied(
     );
     let request = r.to_string();
     p.act("data.apply", &request);
-    assert_eq!(p.row("session-c1-1-1-b1")["sets"][1]["pressed"], true);
-    assert_eq!(p.row("session-c1-1-1-b1")["sets"][0]["pressed"], false);
+    assert_eq!(p.row("session-c1-1-1-b1")["sets"][1]["action"]["pressed"], true);
+    assert_eq!(p.row("session-c1-1-1-b1")["sets"][0]["action"]["pressed"], false);
     assert!(p.panel("session-c1-1-1")["text"]
         .as_str()
         .unwrap()
         .ends_with("1 of 15 checked"));
-    // The weight now starts at what was logged.
-    assert_eq!(p.row("session-c1-1-1-b1")["field"]["value"], "235");
+    // That set shows the weight logged for it, and the others are untouched.
+    assert_eq!(p.row("session-c1-1-1-b1")["sets"][1]["field"]["value"], "235");
+    assert_eq!(p.row("session-c1-1-1-b1")["sets"][0]["field"]["value"], "");
+    assert_eq!(p.row("session-c1-1-1-b1")["sets"][3]["field"]["value"], "230");
     // Tapping it again unchecks it.
     p.act("set.toggle", &form(&key(1, 2), json!({"weight": "235"})));
     assert_eq!(p.requests()[0]["args"]["done"], false);
@@ -1627,4 +1649,138 @@ fn equal_weights_get_no_message_and_two_athletes_on_one_phone_each_read_their_ow
         "the second athlete's own message is not already read"
     );
     assert_ne!(c.panel("popup")["actions"][0]["value"].as_str().unwrap(), id);
+}
+
+#[test]
+fn each_set_has_its_own_weight_and_the_ramp_up_is_the_athletes_to_choose() {
+    let mut p = Page::signed_in("2026-12-01", "athlete", 1);
+    // A ramp-up: 135, then 185, then 225 for the first three sets, each logged as typed.
+    for (set, w) in [(1, "135"), (2, "185"), (3, "225")] {
+        p.act("set.toggle", &form(&key(1, set), json!({"weight": w})));
+        assert_eq!(p.requests()[0]["args"]["weight"], w.parse::<u64>().unwrap());
+        assert_eq!(p.requests()[0]["args"]["set"], set);
+        let request = p.requests()[0].to_string();
+        p.act("data.apply", &request);
+    }
+    let shown: Vec<String> = (0..5)
+        .map(|n| {
+            p.row("session-c1-1-1-b1")["sets"][n]["field"]["value"]
+                .as_str()
+                .unwrap()
+                .to_string()
+        })
+        .collect();
+    assert_eq!(shown, vec!["135", "185", "225", "230", "230"]);
+    // A working set can be lifted at a different weight than the plan.
+    p.act("set.toggle", &form(&key(1, 4), json!({"weight": "240"})));
+    let request = p.requests()[0].to_string();
+    p.act("data.apply", &request);
+    assert_eq!(p.row("session-c1-1-1-b1")["sets"][3]["field"]["value"], "240");
+}
+
+#[test]
+fn a_lift_shows_its_warm_up_and_working_sets_as_it_fills_and_is_complete_when_all_are_checked() {
+    let mut p = Page::signed_in("2026-12-01", "athlete", 1);
+    assert_eq!(
+        p.row("session-c1-1-1-b1")["progress"],
+        "Warm-up 0 of 3, working sets 0 of 2"
+    );
+    let tick = |p: &mut Page, set: u32, w: &str| {
+        p.act("set.toggle", &form(&key(1, set), json!({"weight": w})));
+        let request = p.requests()[0].to_string();
+        p.act("data.apply", &request);
+    };
+    tick(&mut p, 1, "135");
+    tick(&mut p, 2, "185");
+    assert_eq!(
+        p.row("session-c1-1-1-b1")["progress"],
+        "Warm-up 2 of 3, working sets 0 of 2"
+    );
+    tick(&mut p, 4, "230");
+    assert_eq!(
+        p.row("session-c1-1-1-b1")["progress"],
+        "Warm-up 2 of 3, working sets 1 of 2"
+    );
+    assert!(
+        p.row("session-c1-1-1-b1").get("marker").is_none(),
+        "not complete yet"
+    );
+    tick(&mut p, 3, "225");
+    assert!(
+        p.row("session-c1-1-1-b1").get("marker").is_none(),
+        "four of five is not complete"
+    );
+    tick(&mut p, 5, "230");
+    assert_eq!(p.row("session-c1-1-1-b1")["marker"], "Complete");
+    assert_eq!(
+        p.row("session-c1-1-1-b1")["progress"],
+        "Warm-up 3 of 3, working sets 2 of 2"
+    );
+    // A lift with no percentage says how many sets are done.
+    assert_eq!(p.row("session-c1-1-1-b2")["progress"], "0 of 3 sets");
+    // The session's button says so only when every box in it is checked.
+    let finish = |p: &Page| {
+        p.panel(TUE_LIFT)["actions"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|a| a["name"] == "session.finish")
+            .unwrap()["label"]
+            .clone()
+    };
+    assert_eq!(finish(&p), "Finish session");
+    // Check everything else on Tuesday: the circuit, the rest of the squat sets, the press, the kettle and the pillar raise.
+    p.act("block.toggle", &form(&key(0, 0), json!({})));
+    let request = p.requests()[0].to_string();
+    p.act("data.apply", &request);
+    let mut left = Vec::new();
+    for (block, sets) in [(1u32, 5u32), (2, 3), (3, 3), (4, 3)] {
+        for set in 1..=sets {
+            let row = format!("session-c1-1-1-b{block}");
+            if p.row(&row)["sets"][(set - 1) as usize]["action"]["pressed"] != true {
+                left.push((block, set));
+            }
+        }
+    }
+    let last = left.pop().unwrap();
+    for (block, set) in left {
+        p.act("set.toggle", &form(&key(block, set), json!({"weight": "100"})));
+        let request = p.requests()[0].to_string();
+        p.act("data.apply", &request);
+    }
+    // One box short of everything: the button still says Finish session.
+    assert!(p.panel(TUE_LIFT)["text"]
+        .as_str()
+        .unwrap()
+        .ends_with("14 of 15 checked"));
+    assert_eq!(finish(&p), "Finish session");
+    p.act(
+        "set.toggle",
+        &form(&key(last.0, last.1), json!({"weight": "100"})),
+    );
+    let request = p.requests()[0].to_string();
+    p.act("data.apply", &request);
+    assert!(p.panel(TUE_LIFT)["text"]
+        .as_str()
+        .unwrap()
+        .ends_with("15 of 15 checked"));
+    assert_eq!(finish(&p), "Everything is checked. Finish session");
+}
+
+#[test]
+fn a_lift_with_no_plan_starts_each_set_at_the_weight_of_the_one_before() {
+    let mut p = Page::signed_in("2026-12-01", "athlete", 1);
+    // The stone press has no percentage: log 60 for set 1 and the next sets start there.
+    p.act("set.toggle", &form(&key(2, 1), json!({"weight": "60"})));
+    let request = p.requests()[0].to_string();
+    p.act("data.apply", &request);
+    let shown: Vec<String> = (0..3)
+        .map(|n| {
+            p.row("session-c1-1-1-b2")["sets"][n]["field"]["value"]
+                .as_str()
+                .unwrap()
+                .to_string()
+        })
+        .collect();
+    assert_eq!(shown, vec!["60", "60", "60"]);
 }

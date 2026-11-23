@@ -183,11 +183,14 @@ def run(page, check, engine):
 
     # --- checking things off, finishing, and the message that follows ---
     nav(page, "Today")
-    page.fill("#session-c1-1-1-b1-weight", "235")
+    page.fill("#session-c1-1-1-b1-s1-weight", "235")
     page.click("[data-row='session-c1-1-1-b1'] button.check:text-is('Set 1')")
     page.wait_for_selector("[data-row='session-c1-1-1-b1'] button.check[aria-pressed='true']", state="attached")
     check("1 of 15 checked" in text(page, "#session-c1-1-1 > p"), f"checking a set updates the progress {text(page, '#session-c1-1-1 > p')!r}")
-    check(page.input_value("#session-c1-1-1-b1-weight") == "235", "the weight typed stays after checking a set")
+    check(page.input_value("#session-c1-1-1-b1-s1-weight") == "235", "the weight typed for a set stays after checking it")
+    check(page.input_value("#session-c1-1-1-b1-s4-weight") == "235", "a working set starts at the plan: the new max 315 at 75% is 236.25, which rounds to 235")
+    check(page.input_value("#session-c1-1-1-b1-s2-weight") == "", "a ramp-up set starts empty, for the athlete to choose")
+    check("Warm-up 1 of 3" in text(page, "[data-row='session-c1-1-1-b1'] .progress"), f"the lift shows its progress {text(page, '[data-row=session-c1-1-1-b1] .progress')!r}")
     page.click("#session-c1-1-1 button:text-is('Finish session')")
     page.wait_for_selector("#popup .card", state="attached")
     check(

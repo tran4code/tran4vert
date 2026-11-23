@@ -277,16 +277,22 @@ function rowNode(r) {
   (r.actions || []).forEach((a) => {
     actions.append(a.pressed === undefined ? button(a, () => perform(a.name, a.value)) : checkBox(a, li));
   });
-  if (r.field) {
-    // The weight typed for the sets below it.
-    const wrap = fieldNode(r.field, r.id);
-    wrap.classList.add("weight");
-    body.append(wrap);
+  if (r.progress) {
+    const progress = make("p", r.progress);
+    progress.className = "progress";
+    body.append(progress);
   }
   if ((r.sets || []).length) {
+    // One line for each set: its own weight, and a box to check it off. Ramp-up sets are the athlete's own.
     const boxes = make("div");
     boxes.className = "sets";
-    r.sets.forEach((a) => boxes.append(checkBox(a, li)));
+    r.sets.forEach((s, at) => {
+      const line = make("div");
+      line.className = s.working ? "setbox working" : "setbox";
+      if (s.field) line.append(fieldNode(s.field, r.id + "-s" + String(at + 1)));
+      line.append(checkBox(s.action, line));
+      boxes.append(line);
+    });
     body.append(boxes);
   }
   if (children.length && !r.open) {

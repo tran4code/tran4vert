@@ -267,7 +267,7 @@ def run_engine(p, engine, origin):
     page.wait_for_selector("body[data-screen='today']", state="attached")
 
     # checking a set is sent with the athlete, the place in the session and the weight; the data comes back
-    page.fill("#session-c1-1-1-b1-weight", "235")
+    page.fill("#session-c1-1-1-b1-s1-weight", "235")
     calls = len(db.calls)
     page.click("[data-row='session-c1-1-1-b1'] button.check:text-is('Set 1')")
     page.wait_for_selector("[data-row='session-c1-1-1-b1'] button.check[aria-pressed='true']", state="attached")

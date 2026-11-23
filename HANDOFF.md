@@ -4,7 +4,7 @@ Stage 9, written by the build agent on 2026-11-23. A fresh session starts from t
 
 ## What this is
 
-A phone web page (opened from a link in Safari, not an app store app) for three friends on the same four-week-cycle jump-training program. An athlete taps their name and then the vertical they want (the coach sets each one), the phone remembers it, and they see today's session and the week, with working weights worked out from their own maxes. The coach has a typed passcode, kept out of sight until "I'm the coach" is tapped, records voice notes against a lift and can move sessions. A cycles screen shows what is not loaded yet. The first screen is dark and animated: a motivating message, a character jumping 20 inches and another 50, and a tile with a picture or initial for each athlete. On a session an athlete checks off each set (with the weight they used) and finishes it; the other athlete gets a playful message when they finish first or lift more, as a pop-up the next time they open Today. Static files (GitHub Pages) plus a free Supabase project reached only through functions that check the sign-in. The lock is light on purpose (R2.17).
+A phone web page (opened from a link in Safari, not an app store app) for three friends on the same four-week-cycle jump-training program. An athlete taps their name and then the vertical they want (the coach sets each one), the phone remembers it, and they see today's session and the week, with working weights worked out from their own maxes. The coach has a typed passcode, kept out of sight until "I'm the coach" is tapped, records voice notes against a lift and can move sessions. A cycles screen shows what is not loaded yet. The first screen is dark and animated: a motivating message, a character jumping 20 inches and another 50, and a tile with a picture or initial for each athlete. On a session an athlete checks off each set with its own weight (warm-ups are theirs to choose; the plan starts the working sets) and finishes it; the other athlete gets a playful message when they finish first or lift more, as a pop-up the next time they open Today. Static files (GitHub Pages) plus a free Supabase project reached only through functions that check the sign-in. The lock is light on purpose (R2.17).
 
 ## Rules that hold it up
 
@@ -80,6 +80,7 @@ Set `DEVELOPER_DIR=/Library/Developer/CommandLineTools` first if the Xcode licen
 | R2.24 | Read the messages between athletes (`rival_first_`, `rival_heavy_`, `own_done_` in `data/strings.json`) and change any that miss |
 | R2.25 | Say whether to keep the heavier-weight message, which the person asked for in words but did not tick |
 | R2.27 | Run `supabase/schema.sql` again for checks and finishes |
+| R2.29 | Say whether finishing the last set should finish the session by itself (now it is a tap, because it tells the rival) |
 | R2.14 | Read the agent-written strings at the foot of `SECOND-ORDER.md` |
 | R2.16 | Which max the cycle 2 squat percentage refers to |
 

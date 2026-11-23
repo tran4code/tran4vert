@@ -232,7 +232,12 @@ fn page_labels(s: &Strings) -> std::collections::BTreeMap<String, String> {
 fn disable_changes(ui: &mut Ui<State>) {
     fn walk(list: &mut [crate::ui::Row]) {
         for r in list {
-            for a in r.sets.iter_mut().chain(r.actions.iter_mut()) {
+            for a in r
+                .sets
+                .iter_mut()
+                .map(|b| &mut b.action)
+                .chain(r.actions.iter_mut())
+            {
                 if CHANGES.contains(&a.name.as_str()) {
                     a.enabled = false;
                 }

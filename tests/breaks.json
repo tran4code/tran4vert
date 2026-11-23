@@ -509,5 +509,40 @@
     "find": "for a in r.sets.iter_mut().chain(r.actions.iter_mut()) {",
     "replace": "for a in r.actions.iter_mut() {",
     "test": "a_held_lift_and_an_amap_set_are_checked_without_a_weight_where_there_are_no_sets"
+  },
+  {
+    "name": "a ramp-up set starts at the working weight",
+    "file": "crates/core/src/view.rs",
+    "find": "let shown = log.and_then(|l| l.weight).or(if working {\n                        planned",
+    "replace": "let shown = log.and_then(|l| l.weight).or(if working || true {\n                        planned",
+    "test": "a_lift_has_a_check_box_for_each_set_and_a_weight_that_starts_at_the_working_weight"
+  },
+  {
+    "name": "the working sets are the first ones",
+    "file": "crates/core/src/view.rs",
+    "find": "Some(p) => sets.saturating_sub(p.last) + 1,",
+    "replace": "Some(p) => p.last + 1,",
+    "test": "a_lift_has_a_check_box_for_each_set_and_a_weight_that_starts_at_the_working_weight"
+  },
+  {
+    "name": "a lift is complete before every set is checked",
+    "file": "crates/core/src/view.rs",
+    "find": "if ramp_done + work_done == sets as usize {",
+    "replace": "if ramp_done + work_done + 1 >= sets as usize {",
+    "test": "a_lift_shows_its_warm_up_and_working_sets_as_it_fills_and_is_complete_when_all_are_checked"
+  },
+  {
+    "name": "the finish button announces too early",
+    "file": "crates/core/src/view.rs",
+    "find": "let label = if total > 0 && done == total {",
+    "replace": "let label = if total > 0 && done + 1 >= total {",
+    "test": "a_lift_shows_its_warm_up_and_working_sets_as_it_fills_and_is_complete_when_all_are_checked"
+  },
+  {
+    "name": "a lift with no plan does not carry the last weight",
+    "file": "crates/core/src/view.rs",
+    "find": "carried = log.and_then(|l| l.weight).or(carried);",
+    "replace": "carried = None;",
+    "test": "a_lift_with_no_plan_starts_each_set_at_the_weight_of_the_one_before"
   }
 ]

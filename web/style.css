@@ -171,11 +171,17 @@ li[data-category] { border-left: 6px solid var(--cat); padding-left: 0.6em; }
 .side.after .inches { color: var(--accent); }
 
 /* ---- check boxes, the weight for a lift's sets, and the message over the screen ---- */
-.sets { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0.4rem 0; }
+.sets { display: grid; gap: 0.5rem; margin: 0.5rem 0; }
+.setbox { display: flex; align-items: center; gap: 0.5rem; }
+.setbox .field { flex: 1; margin: 0; max-width: 10em; order: 2; }
+/* The set's button says which set it is, so the weight's label is for screen readers. */
+.setbox .field label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.setbox button.check { order: 1; min-width: 9.5em; text-align: left; }
+.setbox.working button.check { border-width: 2px; }
+.progress { font-weight: 600; margin: 0.25em 0; }
 button.check { min-width: 4.2em; background: var(--soft); font-weight: 600; }
 button.check[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
 button.check[aria-pressed="true"]::before { content: "\2713\00a0"; }
-.weight { max-width: 12em; }
 section[data-kind="popup"] {
   position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: var(--gutter);
   background: rgba(5, 8, 20, 0.72); border: 0; margin: 0;

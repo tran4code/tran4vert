@@ -114,11 +114,22 @@ pub struct Row {
     pub initial: String,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub actions: Vec<Action>,
-    /// The sets of a lift, each a check box; `field` holds the weight typed for them.
+    /// The sets of a lift, each with its own weight and check box.
     #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub sets: Vec<Action>,
+    pub sets: Vec<SetBox>,
+    /// How far through the lift's sets the athlete is, in words.
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub progress: String,
+}
+
+/// One set of a lift: a check box, the weight lifted in it, and whether it is one of the working sets
+/// the program prescribes a percentage for (the others are the athlete's own ramp-up).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct SetBox {
+    pub action: Action,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub field: Option<Field>,
+    pub working: bool,
 }
 
 impl Row {

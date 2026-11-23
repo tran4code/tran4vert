@@ -42,6 +42,8 @@ One row per assumption, surprise or open item. **Kind** is *divergence* (what wa
 | R2.25 | divergence | The person's multiple-choice answer picked only "first to finish" as a rivalry trigger. | Their first message also asked for a nudge when one athlete lifts more. | Both are built; the heavier-weight message compares the weight each logged on the same lift in the same session, and is off when nobody has logged a weight. Say so to turn it off. | `rivalry.rs`, `screens.rs` | person |
 | R2.26 | finding | A message can reach a phone that is closed. | It cannot: the page has no server to send from. The message shows the next time the athlete opens Today, only for the session on today's date, and once read it is kept on that phone. | The person chose the pop-up delivery. | `screens.rs` | done |
 | R2.27 | worklist | The live database holds checks and finishes. | Not until the person runs `supabase/schema.sql` again (it adds `logs` and `finishes` and two functions). Until then the page works and a tick fails with a message. | | | person |
+| R2.28 | divergence | One weight box per lift (the first logging build). | The person asked for a weight for each set, with the ramp-up left to the athlete and a sub-goal that completes when everything is filled. | Each set has its own weight and check. The program's percentage starts only the working sets (the last N of the lift); ramp-up sets start empty; a lift with no percentage starts each set at the weight of the set before. A lift shows "Warm-up a of b, working sets c of d" as it fills and "Complete" when every set is checked. The session's button says "Everything is checked. Finish session" when every box is checked, and the athlete still taps it (it also starts the message to the rival). | `screens.rs` | done |
+| R2.29 | worklist | A finished lift finishes the session by itself. | It does not: finishing is a tap, because it tells the other athlete. The person may want it automatic; say so. | | | person |
 
 ## Strings written by the agent
 
@@ -287,7 +289,6 @@ Each reader-visible string the agent wrote, with its key, for the person to read
 | `session_finished` | Finished |
 | `progress_text` | {done} of {total} checked |
 | `set_box` | Set {n} |
-| `weight_label` | Weight (lb) |
 | `err_log` | That could not be saved. Check the weight. |
 | `own_done_1` | Session finished, {name}. {n} done this week. |
 | `own_done_2` | Done. That is {n} this week, {name}. |
@@ -302,3 +303,8 @@ Each reader-visible string the agent wrote, with its key, for the person to read
 | `rival_mine` | {n} lb |
 | `rival_mine_none` | no weight yet |
 | `block_box` | Done |
+| `set_weight` | Set {n} weight (lb) |
+| `set_progress_ramp` | Warm-up {a} of {b}, working sets {c} of {d} |
+| `set_progress` | {a} of {b} sets |
+| `lift_complete` | Complete |
+| `finish_ready` | Everything is checked. Finish session |
