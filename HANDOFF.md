@@ -19,7 +19,7 @@ A phone web page (opened from a link in Safari, not an app store app) for three 
 | The one other host is the one in `web/net/config.js`, matched to every page's policy; nothing is sent before a passcode | `crates/core/tests/net_fence.rs`; `tests/browser/live_mock.py` |
 | Only `web/save/store.js` names browser storage | `crates/core/tests/storage_fence.rs` |
 | Every string the screens use is in `data/strings.json`, and every string in it is used | `crates/core/tests/screens.rs`, `copy.rs` |
-| The database closes every table to the publishable key and checks the passcode in every function | `supabase/schema.sql`; `tools/remote_check.py` (live only, not yet run) |
+| The database closes every table to the publishable key and checks the passcode in every function | `supabase/schema.sql`; `tools/remote_check.py` (passed against the live project 2026-11-23) |
 
 ## Shape of the code
 
@@ -70,8 +70,7 @@ Set `DEVELOPER_DIR=/Library/Developer/CommandLineTools` first if the Xcode licen
 | R1.7 | Compare one lift day with TeamBuildr; the transcription was typed by hand |
 | R2.1 | Accept the Xcode license (`sudo xcodebuild -license accept`) or keep the environment variable |
 | R2.10 | Check voice-note playback on a phone with the live project |
-| R2.12 | Run `supabase/schema.sql`, then `tools/remote_check.py`; the SQL has never been run |
-| R2.13 | The project exists and its address and publishable key are in the page (done 2026-11-23). Still yours: run the schema, type both passcodes into the SQL editor, add the three athletes, run `tools/seed.py`, set start dates |
+| R2.13 | Done 2026-11-23: project, schema, passcodes, program loaded. Still yours: confirm the three athletes' start dates (coach screen), friends' maxes are entered by themselves |
 | R2.14 | Read the agent-written strings at the foot of `SECOND-ORDER.md` |
 | R2.16 | Which max the cycle 2 squat percentage refers to |
 
@@ -83,8 +82,8 @@ By system, from `SECOND-ORDER.md`: the build environment (R2.1, R2.2), a binary 
 
 ## What passed
 
-2026-11-23, on the final build: `./scripts/check.sh` ended `BUILDER CHECK PASSED` (ten steps; browser check and live-path check in chromium, firefox, webkit, webkit-iphone). `./scripts/count-tests.sh`: `120 passed, 0 failed, 0 ignored`. `python3 scripts/break_tests.py`: `48 of 48 breaks caught`. Commit: the one that adds this file's last edit (see `git log`). The live Supabase project has not been checked (R2.12).
+2026-11-23, on the final build: `./scripts/check.sh` ended `BUILDER CHECK PASSED` (ten steps; browser check and live-path check in chromium, firefox, webkit, webkit-iphone). `./scripts/count-tests.sh`: `120 passed, 0 failed, 0 ignored`. `python3 scripts/break_tests.py`: `48 of 48 breaks caught`. Commit: the one that adds this file's last edit (see `git log`). On 2026-11-23 the person ran `tools/seed.py` (5 of 8 weeks) and `tools/remote_check.py --write` against the live project: `REMOTE CHECK PASSED`.
 
 ## The next action
 
-In the Supabase SQL editor, run `supabase/schema.sql`, then `select set_passcode('group', '...')`, `select set_passcode('coach', '...')` with passcodes of your own, and add the three athletes. Then run `python3.13 tools/seed.py` and `python3.13 tools/remote_check.py`.
+Try the live page on a phone (it needs a web address, so publishing comes first; say the word). Then check 305 at 75% shows 230, record and play a voice note, and move a session.
