@@ -10,8 +10,11 @@ Run ./scripts/build.sh first. Prints each file it writes.
 """
 import functools
 import http.server
+import importlib.util
 import pathlib
+import shutil
 import sys
+import tempfile
 import threading
 
 from playwright.sync_api import sync_playwright
@@ -32,11 +35,23 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         pass
 
 
+def demo_copy(work):
+    """dist/ with the project address cleared, so the page runs as the demo."""
+    spec = importlib.util.spec_from_file_location("set_project", ROOT / "tools/set_project.py")
+    tools = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(tools)
+    site = pathlib.Path(work) / "dist"
+    shutil.copytree(ROOT / "dist", site)
+    tools.apply(site, "", "", web=".")
+    return site
+
+
 def main(out):
     out = pathlib.Path(out)
     out.mkdir(parents=True, exist_ok=True)
+    work = tempfile.mkdtemp(prefix="tran4vert-shots-")
     server = http.server.ThreadingHTTPServer(
-        ("127.0.0.1", 0), functools.partial(Handler, directory=str(ROOT / "dist"))
+        ("127.0.0.1", 0), functools.partial(Handler, directory=str(demo_copy(work)))
     )
     threading.Thread(target=server.serve_forever, daemon=True).start()
     base = f"http://127.0.0.1:{server.server_address[1]}/index.html"
@@ -61,6 +76,8 @@ def main(out):
             page.click(f"#nav button:text-is('{label}')")
 
         shot("1-who")
+        page.evaluate("window.scrollTo(0, 420)")
+        shot("1b-who-tiles", top=False)
         page.click("[data-row='athlete-1'] button")
         page.wait_for_selector("body[data-screen='today']", state="attached")
         shot("2-today")
@@ -89,6 +106,7 @@ def main(out):
         shot("8-lift-coach")
         browser.close()
     server.shutdown()
+    shutil.rmtree(work, ignore_errors=True)
 
 
 if __name__ == "__main__":

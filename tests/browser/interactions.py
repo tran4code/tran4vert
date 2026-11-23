@@ -18,6 +18,20 @@ TODAY = "2026-12-01T09:00:00"
 PHONE_MIN = 44
 
 
+def tiny_png():
+    """A valid 1 by 1 PNG, built here so its checksums are right."""
+    import struct
+    import zlib
+
+    def chunk(kind, data):
+        body = kind + data
+        return struct.pack(">I", len(data)) + body + struct.pack(">I", zlib.crc32(body) & 0xFFFFFFFF)
+
+    header = struct.pack(">IIBBBBB", 1, 1, 8, 6, 0, 0, 0)
+    pixel = zlib.compress(b"\x00\xc6\xff\x3d\xff")
+    return b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", header) + chunk(b"IDAT", pixel) + chunk(b"IEND", b"")
+
+
 def text(page, selector):
     return (page.text_content(selector) or "").strip()
 
@@ -60,6 +74,15 @@ def run(page, check, engine):
     names = [text(page, f"[data-row='athlete-{n}'] strong") for n in (1, 2, 3)]
     check(names == ["Sam", "Jo", "Pat"], f"three names are listed {names}")
     check(text(page, "#banner") == "Demo with made-up data", "the demo says it is a demo")
+    check(text(page, "#hero h2") == "Reach 50 inches.", "the first screen's headline")
+    check(text(page, ".side.before .target") == "20 inches" and text(page, ".side.after .target") == "50 inches", "the two jump heights are labelled in inches")
+    check(len(page.query_selector_all(".lines p")) == 3, "three motivating lines")
+    still = page.evaluate("() => getComputedStyle(document.querySelector('.side.after .jumper')).transform")
+    page.wait_for_function(
+        "(before) => getComputedStyle(document.querySelector('.side.after .jumper')).transform !== before", arg=still, polling=50
+    )
+    check(True, "the character on the right is jumping (its transform changes)")
+    check(page.query_selector("[data-row='athlete-1'] .avatar b") is not None, "a tile shows an initial when there is no picture")
 
     # --- today ---
     page.click("[data-row='athlete-1'] button")
@@ -156,6 +179,18 @@ def run(page, check, engine):
     page.click("[data-row='session-c1-1-1-b1'] button:text-is('Open lift')")
     screen(page, "lift")
     check(page.query_selector("#recorder") is not None, "the coach sees the recorder on a lift")
+    # a picture: chosen on the Coach screen, shown on the tile
+    nav(page, "Coach")
+    page.select_option("#avatar-athlete", "2")
+    pixel = tiny_png()
+    page.set_input_files("#avatar-file", {"name": "a.png", "mimeType": "image/png", "buffer": pixel})
+    page.click("#who button")
+    page.wait_for_selector("[data-row='athlete-2'] img", state="attached")
+    check(page.query_selector("[data-row='athlete-3'] img") is None, "only the athlete who got a picture shows it")
+    page.click("[data-row='athlete-1'] button")
+    screen(page, "today")
+    page.click("[data-row='session-c1-1-1-b1'] button:text-is('Open lift')")
+    screen(page, "lift")
     check(
         "No voice note" in text(page, "#lift-notes"),
         "a lift with no voice note says so",

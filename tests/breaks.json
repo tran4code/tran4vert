@@ -397,5 +397,33 @@
     "find": "            if form.field(\"coach\").is_empty() {",
     "replace": "            if false {",
     "test": "an_empty_coach_passcode_is_refused_and_a_typed_one_becomes_one_request"
+  },
+  {
+    "name": "the hero says the wrong height",
+    "file": "crates/core/src/view.rs",
+    "find": "pub const HERO_AFTER_IN: u32 = 50;",
+    "replace": "pub const HERO_AFTER_IN: u32 = 40;",
+    "test": "the_first_screen_has_a_motivating_message_two_jump_heights_and_a_tile_for_each_athlete"
+  },
+  {
+    "name": "a picture of any size is accepted",
+    "file": "crates/core/src/api.rs",
+    "find": "            if bytes == 0 || bytes > AVATAR_MAX_BYTES {",
+    "replace": "            if false {",
+    "test": "a_picture_is_checked_for_size_and_for_who_may_change_it"
+  },
+  {
+    "name": "an athlete changes another's picture",
+    "file": "crates/core/src/api.rs",
+    "find": "            if !data.is_coach() && !own {",
+    "replace": "            if false {",
+    "test": "a_picture_is_checked_for_size_and_for_who_may_change_it"
+  },
+  {
+    "name": "the picture form lists every athlete to an athlete",
+    "file": "crates/core/src/view.rs",
+    "find": ".filter(|a| only.is_none_or(|id| id == a.id))",
+    "replace": ".filter(|_| true)",
+    "test": "the_picture_form_is_on_the_coach_screen_for_anyone_and_on_an_athletes_own_phone_for_them"
   }
 ]

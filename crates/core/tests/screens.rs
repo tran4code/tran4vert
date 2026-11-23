@@ -168,6 +168,102 @@ fn the_page_starts_with_no_names_and_asks_for_nothing_yet() {
 }
 
 #[test]
+fn the_first_screen_has_a_motivating_message_two_jump_heights_and_a_tile_for_each_athlete() {
+    let mut p = Page::open("2026-12-01");
+    let names = r#"[{"id":1,"name":"Sam","avatar":true},{"id":2,"name":"Jo"},{"id":3,"name":"Pat"}]"#;
+    p.act("names.load", names);
+    let hero = p.panel("hero");
+    assert_eq!(hero["kind"], "hero");
+    assert_eq!(hero["heading"], "Reach 50 inches.");
+    // The two heights the characters jump to: 20 inches before, 50 with Tran4Vert.
+    assert_eq!(hero["data"]["before"], "20");
+    assert_eq!(hero["data"]["after"], "50");
+    assert_eq!(p.row("hero-before")["detail"], "20 inches");
+    assert_eq!(p.row("hero-after")["detail"], "50 inches");
+    let lines: Vec<&str> = hero["rows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|r| s(&r["id"]).starts_with("hero-line"))
+        .map(|r| s(&r["label"]))
+        .collect();
+    assert_eq!(lines.len(), 3);
+    // One tile per athlete; a picture only where there is one, an initial otherwise.
+    assert_eq!(p.panel("names")["kind"], "people");
+    assert_eq!(p.row("name-1")["avatar"], 1);
+    assert_eq!(p.row("name-1")["initial"], "S");
+    assert!(p.row("name-2").get("avatar").is_none());
+    assert_eq!(p.row("name-2")["initial"], "J");
+}
+
+#[test]
+fn a_picture_is_checked_for_size_and_for_who_may_change_it() {
+    let mut a = Page::signed_in("2026-12-01", "athlete", 1);
+    // An athlete in the sample data is not marked signed in by tapping, so the screen's own athlete counts.
+    a.act(
+        "avatar.save",
+        &form("", json!({"athlete": "1", "bytes": "152648"})),
+    );
+    assert_eq!(a.requests()[0]["rpc"], "set_avatar");
+    assert_eq!(a.requests()[0]["args"]["athlete"], 1);
+    assert_eq!(
+        a.try_act(
+            "avatar.save",
+            &form("", json!({"athlete": "1", "bytes": "300001"}))
+        )
+        .unwrap_err(),
+        "That picture is empty or over 300 KB. Pick a smaller one."
+    );
+    assert!(a
+        .try_act("avatar.save", &form("", json!({"athlete": "1", "bytes": "0"})))
+        .is_err());
+    assert!(a
+        .try_act("avatar.save", &form("", json!({"athlete": "1", "bytes": "big"})))
+        .is_err());
+    assert_eq!(
+        a.try_act("avatar.save", &form("", json!({"athlete": "2", "bytes": "1000"})))
+            .unwrap_err(),
+        "That name is not yours."
+    );
+    let mut c = Page::signed_in("2026-12-01", "coach", 1);
+    c.act("avatar.save", &form("", json!({"athlete": "2", "bytes": "1000"})));
+    assert_eq!(c.requests()[0]["args"]["athlete"], 2);
+    // Once applied, the athlete has a picture, and their tile says so.
+    let request = c.requests()[0].to_string();
+    c.act("data.apply", &request);
+    c.act("athlete.switch", "");
+    assert_eq!(c.row("athlete-2")["avatar"], 2);
+    assert!(c.row("athlete-3").get("avatar").is_none());
+}
+
+#[test]
+fn the_picture_form_is_on_the_coach_screen_for_anyone_and_on_an_athletes_own_phone_for_them() {
+    let mut c = Page::signed_in("2026-12-01", "coach", 1);
+    c.act("screen.show", "coach");
+    let ids: Vec<&str> = c.panel("avatar")["fields"][0]["choices"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|x| s(&x["value"]))
+        .collect();
+    assert_eq!(ids, vec!["1", "2", "3"]);
+    let mut p = Page::open("2026-12-01");
+    p.act("names.load", NAMES);
+    p.act("login.name", "2");
+    let mut state = serde_json::from_str::<Value>(&remote("athlete")).unwrap();
+    state["me"] = json!(2);
+    p.act("data.load", &state.to_string());
+    p.act("athlete.switch", "");
+    let own: Vec<&str> = p.panel("avatar")["fields"][0]["choices"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|x| s(&x["value"]))
+        .collect();
+    assert_eq!(own, vec!["2"]);
+}
+
+#[test]
 fn tapping_a_name_then_a_goal_signs_in_and_the_core_never_sees_a_typed_secret() {
     let mut p = Page::open("2026-12-01");
     p.act("names.load", NAMES);
@@ -1175,9 +1271,17 @@ fn every_string_in_the_strings_file_is_used_by_the_core_or_the_page() {
         page.push_str(&fs::read_to_string(root().join("web").join(name)).unwrap_or_default());
     }
     let built = |key: &str| {
-        ["dow_", "dow_long_", "month_", "kind_", "rx_", "demo_athlete_"]
-            .iter()
-            .any(|p| key.starts_with(p))
+        [
+            "dow_",
+            "dow_long_",
+            "month_",
+            "kind_",
+            "rx_",
+            "demo_athlete_",
+            "hero_line_",
+        ]
+        .iter()
+        .any(|p| key.starts_with(p))
     };
     let mut unused = Vec::new();
     for (key, _) in file.as_object().unwrap() {

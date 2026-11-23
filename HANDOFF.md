@@ -4,7 +4,7 @@ Stage 9, written by the build agent on 2026-11-23. A fresh session starts from t
 
 ## What this is
 
-A phone web page (opened from a link in Safari, not an app store app) for three friends on the same four-week-cycle jump-training program. An athlete taps their name and then the vertical they want (the coach sets each one), the phone remembers it, and they see today's session and the week, with working weights worked out from their own maxes. The coach has a typed passcode, kept out of sight until "I'm the coach" is tapped, records voice notes against a lift and can move sessions. A cycles screen shows what is not loaded yet. Static files (GitHub Pages) plus a free Supabase project reached only through functions that check the sign-in. The lock is light on purpose (R2.17).
+A phone web page (opened from a link in Safari, not an app store app) for three friends on the same four-week-cycle jump-training program. An athlete taps their name and then the vertical they want (the coach sets each one), the phone remembers it, and they see today's session and the week, with working weights worked out from their own maxes. The coach has a typed passcode, kept out of sight until "I'm the coach" is tapped, records voice notes against a lift and can move sessions. A cycles screen shows what is not loaded yet. The first screen is dark and animated: a motivating message, a character jumping 20 inches and another 50, and a tile with a picture or initial for each athlete. Static files (GitHub Pages) plus a free Supabase project reached only through functions that check the sign-in. The lock is light on purpose (R2.17).
 
 ## Rules that hold it up
 
@@ -73,6 +73,8 @@ Set `DEVELOPER_DIR=/Library/Developer/CommandLineTools` first if the Xcode licen
 | R2.13 | Done 2026-11-23: project, schema, passcodes, program loaded. Still yours: confirm the three athletes' start dates (coach screen), friends' maxes are entered by themselves |
 | R2.17 | The sign-in is a name and a tapped goal. Anyone with the link can read the names, and can reach an athlete's data by guessing among sixteen goals, five tries per fifteen minutes. The paid program text is behind the same lock (R1.6). Chosen by the person on 2026-11-23 |
 | R2.18 | Run `supabase/schema.sql` again in the SQL editor, give each athlete their goal with `update athletes set goal = 40 where name = '...'`, and run `tools/remote_check.py`; the new page is not published until then |
+| R2.19 | Upload the picture yourself (Coach screen, up to 300 KB); the agent did not use the pasted press photo, whose rights are yours to judge |
+| R2.21 | Run `supabase/schema.sql` again for the picture columns |
 | R2.14 | Read the agent-written strings at the foot of `SECOND-ORDER.md` |
 | R2.16 | Which max the cycle 2 squat percentage refers to |
 

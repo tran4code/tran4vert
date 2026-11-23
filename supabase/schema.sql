@@ -40,6 +40,9 @@ create table if not exists public.athletes (
   goal int check (goal between 10 and 99)
 );
 alter table public.athletes add column if not exists goal int check (goal between 10 and 99);
+-- A picture the athlete or the coach uploads (at most 300 KB). It is served to anyone with the link.
+alter table public.athletes add column if not exists avatar bytea check (octet_length(avatar) <= 307200);
+alter table public.athletes add column if not exists avatar_mime text check (avatar_mime like 'image/%' and char_length(avatar_mime) <= 60);
 
 create table if not exists public.attempts (
   athlete int not null,
@@ -178,7 +181,7 @@ begin
     'as_of', to_char(current_date, 'YYYY-MM-DD'),
     'program', coalesce((select body from public.program where id = 1), '{}'::jsonb),
     'athletes', coalesce((select jsonb_agg(jsonb_build_object('id', id, 'name', name,
-        'start', to_char(start, 'YYYY-MM-DD')) || case when r = 'coach' and goal is not null
+        'start', to_char(start, 'YYYY-MM-DD'), 'avatar', avatar is not null) || case when r = 'coach' and goal is not null
         then jsonb_build_object('goal', goal) else '{}'::jsonb end order by id) from public.athletes), '[]'::jsonb),
     'maxes', coalesce((select jsonb_agg(jsonb_build_object('id', id, 'athlete', athlete, 'lift', lift,
         'weight', weight, 'date', to_char(date, 'YYYY-MM-DD')) order by id) from public.maxes), '[]'::jsonb),
@@ -194,8 +197,34 @@ end $$;
 -- The names to tap, before anyone is signed in. Names and ids only.
 create or replace function public.get_names()
 returns jsonb language sql security definer set search_path = public, extensions as $$
-  select coalesce(jsonb_agg(jsonb_build_object('id', id, 'name', name) order by id), '[]'::jsonb) from public.athletes
+  select coalesce(jsonb_agg(jsonb_build_object('id', id, 'name', name, 'avatar', avatar is not null) order by id), '[]'::jsonb)
+  from public.athletes
 $$;
+
+-- An athlete's picture, to anyone: it shows before anyone is signed in.
+create or replace function public.get_avatar(p_athlete int)
+returns bytea language plpgsql security definer set search_path = public, extensions as $$
+declare b bytea;
+begin
+  select avatar into b from public.athletes where id = p_athlete;
+  if b is null then raise exception 'no_such_avatar'; end if;
+  return b;
+end $$;
+
+create or replace function public.set_avatar(p_code text, p_athlete int, p_mime text, p_image text)
+returns void language plpgsql security definer set search_path = public, extensions as $$
+declare bytes bytea;
+begin
+  perform private.can_act(p_code, p_athlete);
+  begin
+    bytes := decode(p_image, 'base64');
+  exception when others then
+    raise exception 'bad_image';
+  end;
+  if octet_length(bytes) > 307200 then raise exception 'image_too_large'; end if;
+  update public.athletes set avatar = bytes, avatar_mime = p_mime where id = p_athlete;
+  if not found then raise exception 'no_such_athlete'; end if;
+end $$;
 
 create or replace function public.get_note_audio(p_code text, p_id bigint)
 returns bytea language plpgsql security definer set search_path = public, extensions as $$
@@ -322,7 +351,7 @@ end $$;
 revoke all on schema private from public, anon, authenticated;
 revoke execute on all functions in schema public from public, anon, authenticated;
 grant execute on function
-  public.get_names(), public.set_goal(text, int, int),
+  public.get_names(), public.get_avatar(int), public.set_avatar(text, int, text, text), public.set_goal(text, int, int),
   public.get_state(text), public.get_note_audio(text, bigint),
   public.add_max(text, int, text, int, text), public.delete_max(text, bigint),
   public.move_session(text, int, text, int, int, text), public.undo_move(text, int, text, int, int),

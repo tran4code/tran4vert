@@ -17,7 +17,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
-use crate::data::{apply, Data, NameRec, Request, GOALS};
+use crate::data::{apply, Data, NameRec, Request, AVATAR_MAX_BYTES, GOALS};
 use crate::dates;
 use crate::glossary;
 use crate::maxes;
@@ -333,6 +333,7 @@ fn demo_data(program_json: &str, s: &Strings, today: i64) -> Result<Data, String
             name: s.t(&format!("demo_athlete_{n}")),
             start: start.clone(),
             goal: None,
+            avatar: false,
         })
         .collect();
     let max = |id: u64, lift: &str, weight: u32| crate::data::MaxRec {
@@ -673,6 +674,24 @@ fn step(mut st: State, name: &str, value: &str) -> Out {
             if requests.is_empty() {
                 message = s.t("nothing_changed");
             }
+        }
+        "avatar.save" => {
+            let data = need_data(&st)?;
+            let form = Form::parse(value)?;
+            let athlete = number(&form.field("athlete"), "err_no_athlete", &s)?;
+            let bytes = number(&form.field("bytes"), "err_avatar", &s).unwrap_or(0);
+            if data.athlete(athlete).is_none() {
+                return Err(s.t("err_no_athlete"));
+            }
+            // The coach changes anyone's picture; an athlete changes their own.
+            let own = data.me.or(st.athlete) == Some(athlete);
+            if !data.is_coach() && !own {
+                return Err(s.t("err_not_you"));
+            }
+            if bytes == 0 || bytes > AVATAR_MAX_BYTES {
+                return Err(s.f("err_avatar", &[("kb", &(AVATAR_MAX_BYTES / 1000).to_string())]));
+            }
+            requests.push(Request::new("set_avatar", json!({"athlete": athlete})));
         }
         "goals.set" => {
             let data = need_data(&st)?;

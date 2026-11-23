@@ -2,5 +2,6 @@
   "_about": "Presentation numbers for the page (D3). tap_px is the smallest touch target in CSS pixels; the page sets it as a CSS variable.",
   "tap_px": 44,
   "text_px": 18,
-  "gutter_px": 16
+  "gutter_px": 16,
+  "inch_px": 2
 }

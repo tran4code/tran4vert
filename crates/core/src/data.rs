@@ -21,6 +21,8 @@ pub const MAX_NOTE_SECONDS: u32 = 180;
 pub const MAX_TITLE: usize = 60;
 /// The verticals an athlete can tap to sign in, in inches. The coach sets one
 /// for each athlete. It is a light lock among friends, not a strong one.
+/// The largest picture, in bytes. The database holds the same limit.
+pub const AVATAR_MAX_BYTES: u64 = 300_000;
 pub const GOALS: [u32; 16] = [30, 32, 34, 36, 38, 40, 42, 44, 46, 48, 50, 52, 54, 56, 58, 60];
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -32,6 +34,9 @@ pub struct AthleteRec {
     /// The vertical this athlete taps to sign in. Only the coach is sent it.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub goal: Option<u32>,
+    /// Whether the athlete has a picture.
+    #[serde(default)]
+    pub avatar: bool,
 }
 
 /// A name to tap before anyone is signed in.
@@ -39,6 +44,8 @@ pub struct AthleteRec {
 pub struct NameRec {
     pub id: u64,
     pub name: String,
+    #[serde(default)]
+    pub avatar: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -264,6 +271,14 @@ pub fn apply(data: &mut Data, request: &Request) -> Result<(), String> {
                 .find(|x| x.id == athlete)
                 .ok_or_else(|| format!("There is no athlete {athlete}."))?;
             rec.goal = Some(goal);
+        }
+        "set_avatar" => {
+            let athlete = number(a, "athlete")?;
+            data.athletes
+                .iter_mut()
+                .find(|x| x.id == athlete)
+                .ok_or_else(|| format!("There is no athlete {athlete}."))?
+                .avatar = true;
         }
         "set_cycle_note" => {
             let cycle = text(a, "cycle")?.to_string();

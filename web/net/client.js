@@ -91,14 +91,27 @@ export function fetchAudio(id) {
   return withCodes("get_note_audio", { id }, true);
 }
 
-// A voice note's bytes travel as base64 text and are decoded in the database.
-export async function addNote(args, blob) {
+// Bytes travel as base64 text and are decoded in the database.
+async function toBase64(blob) {
   const text = await new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result);
     reader.onerror = () => reject(new Error("server"));
     reader.readAsDataURL(blob);
   });
-  const parts = text.split(",");
-  return withCodes("add_note", { ...args, mime: blob.type, audio: parts[1] }, false);
+  return text.split(",")[1];
+}
+
+export async function addNote(args, blob) {
+  return withCodes("add_note", { ...args, mime: blob.type, audio: await toBase64(blob) }, false);
+}
+
+// An athlete's picture shows before anyone is signed in, so reading it needs no sign-in.
+export function fetchAvatar(id) {
+  return call("get_avatar", { p_athlete: id }, true);
+}
+
+export async function setAvatar(args, file) {
+  const mime = file.type || "image/jpeg";
+  return withCodes("set_avatar", { ...args, mime, image: await toBase64(file) }, false);
 }

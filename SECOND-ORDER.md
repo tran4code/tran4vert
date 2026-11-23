@@ -33,6 +33,9 @@ One row per assumption, surprise or open item. **Kind** is *divergence* (what wa
 | R2.16 | finding | The Cycle 2 front-squat percentage names a max (R1.5). | The core uses the lift named by the block's `of` field and has no rule of its own; the sample program's equivalent line names a different lift to show that. | Question 3 (round 1) stays with the person; changing the answer is a program-file edit, not code. | | person |
 | R2.17 | divergence | Entry is a typed group passcode (BRIEF done-means 1 and 2; DECISIONS: "Group passcode"). | The person asked for tapping instead of typing: each athlete taps their name, then a vertical (40 inches for one, 50 for another). The agent said that a few choices can be guessed and that names must be fetched before anyone signs in; the person chose "Replace the passcode". | Sixteen goals; the coach sets each athlete's; five wrong tries lock that athlete out for fifteen minutes; each wrong try waits half a second; an athlete changes only their own maxes and moves; goals are sent only to the coach; names and ids are public. The page now makes one call on load, for the names, so done-means 1 ("no request until a passcode is submitted") no longer holds as written. The coach keeps a typed passcode behind a button. | `schema.sql`, `screens.rs`, `live_mock.py` | person |
 | R2.18 | worklist | The live database matches the code. | It has the old functions and no goals. | The person re-runs `supabase/schema.sql` (it keeps data), sets each athlete's goal, and runs `tools/remote_check.py`. Publishing waits for that: the new page needs `get_names`. | | person |
+| R2.19 | finding | A photo the person supplied can be an athlete's profile picture. | It is a press photograph of a named real person, and the repository and the site are public. The agent cannot check its rights and did not copy it anywhere. | Built a picture upload instead: the coach (or an athlete, for themselves) chooses a file, up to 300 KB, and it is stored in the person's own database, not in git. The person uploads it, and the rights are theirs to judge. | `screens.rs` (size and who may change); `schema.sql` | person |
+| R2.20 | divergence | Names are public (R2.17). | Pictures are public too: the first screen shows them to anyone with the link, so `get_avatar` takes no sign-in. | Said to the person in the same message; `schema.sql` comments say it. | `live_mock.py` (a picture is fetched without a sign-in) | done |
+| R2.21 | worklist | The database has the picture columns. | Not until the person runs `supabase/schema.sql` again (it keeps the data). Until then the page works and shows initials, and an upload fails. | | | person |
 
 ## Strings written by the agent
 
@@ -252,3 +255,16 @@ Each reader-visible string the agent wrote, with its key, for the person to read
 | `err_too_many` | Too many wrong tries. Wait a few minutes and try again. |
 | `page_names_failed` | The names could not be loaded. Check the signal and reload. |
 | `who_you` | You are {name}. |
+| `hero_title` | Reach {n} inches. |
+| `hero_sub` | Each session is a chance to add an inch. Tap your name to start. |
+| `hero_before` | Before Tran4Vert |
+| `hero_after` | With Tran4Vert |
+| `hero_inches` | {n} inches |
+| `hero_line_1` | Small jumps, stacked week after week. |
+| `hero_line_2` | Beat last week's number. |
+| `hero_line_3` | Show up. Jump. Repeat. |
+| `avatar_heading` | A picture |
+| `avatar_text` | Choose a picture from this phone, up to {kb} KB. It shows on the first screen to anyone with the link. |
+| `avatar_athlete` | Whose picture |
+| `err_avatar` | That picture is empty or over {kb} KB. Pick a smaller one. |
+| `page_avatar_choose` | Choose a picture |

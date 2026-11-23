@@ -43,6 +43,7 @@ MOCK = "https://mock.supabase.test"
 KEY = "pretend-publishable-key-0000000000"
 COACH = "mock-coach-code"
 GOALS = {1: 40, 2: 50, 3: 44}
+# Sam has a picture on the first screen (a one-pixel PNG), the others do not.
 TODAY = "2026-12-01T09:00:00"
 failures = []
 
@@ -58,6 +59,20 @@ def load(name, path):
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+def tiny_png():
+    """A valid 1 by 1 PNG, built here so its checksums are right."""
+    import struct
+    import zlib
+
+    def chunk(kind, data):
+        body = kind + data
+        return struct.pack(">I", len(data)) + body + struct.pack(">I", zlib.crc32(body) & 0xFFFFFFFF)
+
+    header = struct.pack(">IIBBBBB", 1, 1, 8, 6, 0, 0, 0)
+    pixel = zlib.compress(b"\x00\xc6\xff\x3d\xff")
+    return b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", header) + chunk(b"IDAT", pixel) + chunk(b"IEND", b"")
 
 
 class Handler(http.server.SimpleHTTPRequestHandler):
@@ -92,7 +107,9 @@ class Database:
 
     def answer(self, name, body):
         if name == "get_names":
-            return 200, [{"id": a["id"], "name": a["name"]} for a in self.state["athletes"]]
+            return 200, [{"id": a["id"], "name": a["name"], "avatar": a["id"] == 1} for a in self.state["athletes"]]
+        if name == "get_avatar":
+            return 200, tiny_png()
         code = str(body.get("p_code", ""))
         me = None
         if code == COACH:
@@ -162,6 +179,9 @@ def run_engine(p, engine, origin):
         body = json.loads(request.post_data or "{}")
         db.calls.append((name, body, request.headers.get("apikey")))
         status, payload = db.answer(name, body)
+        if isinstance(payload, bytes):
+            route.fulfill(status=status, headers={**cors, "content-type": "application/octet-stream"}, body=payload)
+            return
         route.fulfill(status=status, headers={**cors, "content-type": "application/json"}, body=json.dumps(payload))
 
     def guard(route):
@@ -188,13 +208,19 @@ def run_engine(p, engine, origin):
     page.wait_for_timeout(2000)
     page.wait_for_selector("[data-row='name-1']", state="attached")
     check(
-        [c[0] for c in db.calls] == ["get_names"] and "p_code" not in db.calls[0][1],
-        f"first load and idle make one call, for the names, and send no sign-in {[c[0] for c in db.calls]}",
+        db.calls[0][0] == "get_names"
+        and {c[0] for c in db.calls} <= {"get_names", "get_avatar"}
+        and all("p_code" not in c[1] for c in db.calls),
+        f"first load and idle ask only for the names and the pictures, and send no sign-in {[c[0] for c in db.calls]}",
     )
     check(page.get_attribute("body", "data-screen") == "passcode", "the first screen is the sign-in screen")
     names = [page.text_content(f"[data-row='name-{n}'] strong") or page.text_content(f"[data-row='name-{n}'] button") for n in (1, 2, 3)]
     check([n.strip() for n in names] == ["Sam", "Jo", "Pat"], f"three names to tap {names}")
     check(page.query_selector("input") is None, "there is nothing to type on the first screen")
+    check(page.query_selector("#hero h2") is not None and page.query_selector(".side.after .jumper") is not None, "the first screen has the headline and the jumpers")
+    page.wait_for_selector("[data-row='name-1'] img", state="attached")
+    check(page.query_selector("[data-row='name-2'] img") is None, "an athlete with no picture shows an initial, not a picture")
+    check(any(c[0] == "get_avatar" and "p_code" not in c[1] for c in db.calls), "a picture is fetched without a sign-in, as the first screen needs it")
     check(page.query_selector("#passcode-coach") is None, "the coach's field is out of sight")
 
     def tap_name(n):
@@ -212,7 +238,7 @@ def run_engine(p, engine, origin):
     tap_goal(40)
     page.wait_for_selector("body[data-screen='today']", state="attached")
     check(db.calls[-1][2] == KEY and db.calls[-1][1]["p_code"] == "1:40", "the call carries the publishable key and the sign-in")
-    check(page.text_content("#who button") == "Sam", "the page knows who signed in")
+    check((page.text_content("#who button") or "").strip().endswith("Sam"), "the page knows who signed in")
     check("230 lb" in (page.text_content("[data-row='session-c1-1-1-b1-weight']") or ""), "the session shows 305 at 75% as 230")
 
     # Five wrong goals for Pat lock Pat out, even for the right goal.

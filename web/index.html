@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <!-- Reference default plus two changes (BUILDER-SPEC.md): connect-src names the one
        database origin in web/net/config.js (none while the page runs as a demo),
-       media-src blob: lets a voice note play, and manifest-src 'self' lets the phone
+       media-src and img-src blob: let a voice note play and a picture show, and manifest-src 'self' lets the phone
        read the manifest. A meta policy cannot stop data leaving by navigation, so the
        browser check still watches requests. -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; connect-src 'self' https://eqkromjfmsarwtzomtvs.supabase.co; style-src 'self'; img-src 'self' data:; media-src blob:; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; connect-src 'self' https://eqkromjfmsarwtzomtvs.supabase.co; style-src 'self'; img-src 'self' data: blob:; media-src blob:; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
   <meta name="theme-color" content="#15181c">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <link rel="manifest" href="manifest.webmanifest">

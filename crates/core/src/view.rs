@@ -6,7 +6,7 @@
 //! here from the rules in the other modules.
 
 use crate::api::{MoveKey, State};
-use crate::data::{AthleteRec, Data, GOALS, MAX_NOTE_SECONDS, MAX_TITLE};
+use crate::data::{AthleteRec, Data, AVATAR_MAX_BYTES, GOALS, MAX_NOTE_SECONDS, MAX_TITLE};
 use crate::dates;
 use crate::maxes;
 use crate::moves::{self, DayView, Empty, Entry};
@@ -17,7 +17,8 @@ use crate::schedule::{self, CYCLE_WEEKS};
 use crate::ui::{Action, Choice, Field, Header, NavItem, Panel, Row};
 
 /// Action names that change shared data; they are off while the phone is offline.
-pub const CHANGES: [&str; 13] = [
+pub const CHANGES: [&str; 14] = [
+    "avatar.save",
     "goals.set",
     "max.add",
     "max.delete",
@@ -89,6 +90,44 @@ fn choice(value: &str, label: &str) -> Choice {
 
 // ---- passcode and who ----
 
+/// The jump heights the first screen shows, in inches: before Tran4Vert, and with it.
+pub const HERO_BEFORE_IN: u32 = 20;
+pub const HERO_AFTER_IN: u32 = 50;
+
+/// The first screen's top: a motivating message and two characters jumping, one
+/// to the height before and one to the height after. The page draws the jumpers;
+/// the words and the two heights come from here.
+pub fn hero(s: &Strings) -> Panel {
+    let after = HERO_AFTER_IN.to_string();
+    let before = HERO_BEFORE_IN.to_string();
+    let mut p = Panel::new("hero", "hero")
+        .heading(&s.f("hero_title", &[("n", &after)]))
+        .text(&s.t("hero_sub"));
+    let mut b = Row::new("hero-before", &s.t("hero_before"));
+    b.detail = s.f("hero_inches", &[("n", &before)]);
+    let mut a = Row::new("hero-after", &s.t("hero_after"));
+    a.detail = s.f("hero_inches", &[("n", &after)]);
+    p.rows = vec![b, a];
+    for n in 1..=3 {
+        p.rows.push(Row::new(
+            &format!("hero-line-{n}"),
+            &s.t(&format!("hero_line_{n}")),
+        ));
+    }
+    p.data.insert("before".into(), before);
+    p.data.insert("after".into(), after);
+    p
+}
+
+/// A person to tap: the page draws a tile with their picture, or their initial.
+fn person_row(id: u64, name: &str, avatar: bool, action: Action) -> Row {
+    let mut row = Row::new(&format!("name-{id}"), name);
+    row.avatar = avatar.then_some(id);
+    row.initial = name.chars().next().map(String::from).unwrap_or_default();
+    row.actions = vec![action];
+    row
+}
+
 pub fn passcode(st: &State, s: &Strings, error: &str) -> Vec<Panel> {
     let mut panels = Vec::new();
     if st.coach_field {
@@ -132,16 +171,20 @@ pub fn passcode(st: &State, s: &Strings, error: &str) -> Vec<Panel> {
         }
         return vec![p];
     }
-    let mut p = Panel::new("names", "list")
+    panels.push(hero(s));
+    let mut p = Panel::new("names", "people")
         .heading(&s.t("names_heading"))
         .text(&s.t("names_text"));
     if st.names.is_empty() {
         p.text = s.t("names_loading");
     }
     for n in &st.names {
-        let mut row = Row::new(&format!("name-{}", n.id), &n.name);
-        row.actions = vec![Action::new("login.name", &n.id.to_string(), &n.name)];
-        p.rows.push(row);
+        p.rows.push(person_row(
+            n.id,
+            &n.name,
+            n.avatar,
+            Action::new("login.name", &n.id.to_string(), &n.name),
+        ));
     }
     if !error.is_empty() {
         p.marker = error.to_string();
@@ -159,20 +202,29 @@ pub fn who(st: &State, data: &Data, s: &Strings) -> Vec<Panel> {
         let name = data.athlete(me).map(|a| a.name.clone()).unwrap_or_default();
         let mut you = Panel::new("who-you", "text").text(&s.f("who_you", &[("name", &name)]));
         you.actions = vec![Action::new("screen.show", "today", &s.t("back_today"))];
-        return vec![you, phone_panel(st, s)];
+        return vec![you, avatar_panel(data, s, Some(me)), phone_panel(st, s)];
     }
-    let mut p = Panel::new("who", "list")
+    let mut p = Panel::new("who", "people")
         .heading(&s.t("who_heading"))
         .text(&s.t("who_text"));
     for a in &data.athletes {
-        let mut row = Row::new(&format!("athlete-{}", a.id), &a.name);
-        row.actions = vec![Action::new("athlete.pick", &a.id.to_string(), &a.name)];
+        let mut row = person_row(
+            a.id,
+            &a.name,
+            a.avatar,
+            Action::new("athlete.pick", &a.id.to_string(), &a.name),
+        );
+        row.id = format!("athlete-{}", a.id);
         if st.athlete == Some(a.id) {
             row.marker = s.t("who_current");
         }
         p.rows.push(row);
     }
-    let mut panels = vec![p];
+    let mut panels = Vec::new();
+    if st.demo {
+        panels.push(hero(s));
+    }
+    panels.push(p);
     if !st.demo {
         panels.push(phone_panel(st, s));
     }
@@ -182,6 +234,23 @@ pub fn who(st: &State, data: &Data, s: &Strings) -> Vec<Panel> {
         panels.push(c);
     }
     panels
+}
+
+/// A picture for an athlete: the page lets the person choose a file and sends its size here first.
+/// `only` is the one athlete an athlete may change; the coach may change anyone.
+fn avatar_panel(data: &Data, s: &Strings, only: Option<u64>) -> Panel {
+    let mut p = Panel::new("avatar", "avatar")
+        .heading(&s.t("avatar_heading"))
+        .text(&s.f("avatar_text", &[("kb", &(AVATAR_MAX_BYTES / 1000).to_string())]));
+    let choices: Vec<Choice> = data
+        .athletes
+        .iter()
+        .filter(|a| only.is_none_or(|id| id == a.id))
+        .map(|a| choice(&a.id.to_string(), &a.name))
+        .collect();
+    let first = choices.first().map(|c| c.value.clone()).unwrap_or_default();
+    p.fields = vec![Field::new("athlete", &s.t("avatar_athlete"), "select", &first).with_choices(choices)];
+    p
 }
 
 /// What this phone keeps, and a way to forget it, asked about before it is done.
@@ -885,6 +954,7 @@ pub fn coach(ctx: &Ctx) -> (String, Vec<Panel>) {
     }
     goals.actions = vec![Action::new("goals.set", "", &s.t("goals_save"))];
     panels.push(goals);
+    panels.push(avatar_panel(ctx.data, ctx.s, None));
     panels.push(recorder(ctx, ""));
     let mut notes_panel = Panel::new("coach-notes", "list").heading(&s.t("coach_notes_heading"));
     for n in &ctx.data.notes {
@@ -948,6 +1018,7 @@ pub fn header(ctx: Option<&Ctx>, st: &State, s: &Strings) -> Header {
     if let Some(c) = ctx {
         h.who = c.athlete.name.clone();
         h.coach = c.coach();
+        h.avatar = c.athlete.avatar.then_some(c.athlete.id);
     }
     if st.offline {
         let as_of = st.data.as_ref().map(|d| d.as_of.clone()).unwrap_or_default();

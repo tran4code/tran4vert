@@ -91,6 +91,12 @@ pub struct Row {
     pub rows: Vec<Row>,
     /// Whether the rows under this one start shown.
     pub open: bool,
+    /// The athlete whose picture goes with this row, when there is one.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avatar: Option<u64>,
+    /// An athlete's name when the row is a person to tap (the page draws the initial without a picture).
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub initial: String,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub actions: Vec<Action>,
 }
@@ -128,6 +134,9 @@ pub struct Panel {
     /// For a recorder: the lifts a note can go on.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub lifts: Vec<Choice>,
+    /// Numbers the page's drawing needs (the hero's two jump heights, in inches).
+    #[serde(skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+    pub data: std::collections::BTreeMap<String, String>,
 }
 
 impl Panel {
@@ -143,6 +152,7 @@ impl Panel {
             actions: Vec::new(),
             limit: None,
             lifts: Vec::new(),
+            data: std::collections::BTreeMap::new(),
         }
     }
 
@@ -169,6 +179,9 @@ pub struct Header {
     /// The athlete's name, or empty before one is chosen.
     pub who: String,
     pub coach: bool,
+    /// The signed-in athlete, when they have a picture.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avatar: Option<u64>,
     /// "Offline, as of …" when the phone cannot reach the database.
     pub offline: String,
 }

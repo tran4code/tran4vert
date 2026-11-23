@@ -91,6 +91,128 @@ function formValue(box, a) {
   return JSON.stringify({ value: a.value, fields });
 }
 
+// ---- pictures, the first screen's jumpers, and people to tap ----
+
+const avatarUrls = new Map();
+
+async function avatarUrl(id) {
+  if (avatarUrls.has(id)) return avatarUrls.get(id);
+  if (!live) return "";
+  const url = URL.createObjectURL(await net.fetchAvatar(id));
+  avatarUrls.set(id, url);
+  return url;
+}
+
+// A picture where there is one; the initial where there is not.
+function avatarNode(id, initial, seed) {
+  const node = make("span");
+  node.className = "avatar";
+  node.style.setProperty("--seed", String(seed));
+  node.append(make("b", initial));
+  if (id) {
+    avatarUrl(id)
+      .then((url) => {
+        if (!url) return;
+        const img = make("img");
+        img.alt = "";
+        img.src = url;
+        node.replaceChildren(img);
+      })
+      .catch(() => {});
+  }
+  return node;
+}
+
+function peopleNode(p) {
+  const ul = make("ul");
+  ul.className = "people";
+  p.rows.forEach((r, seed) => {
+    const li = make("li");
+    li.dataset.row = r.id;
+    const a = r.actions[0];
+    const tile = button({ name: a.name, label: "", enabled: a.enabled }, () => perform(a.name, a.value));
+    tile.className = "tile";
+    tile.append(avatarNode(r.avatar, r.initial, seed), make("strong", r.label));
+    if (r.marker) tile.append(make("span", r.marker));
+    li.append(tile);
+    ul.append(li);
+  });
+  return ul;
+}
+
+function svg(tag, attrs) {
+  const node = document.createElementNS("http://www.w3.org/2000/svg", tag);
+  Object.entries(attrs).forEach(([k, v]) => node.setAttribute(k, v));
+  return node;
+}
+
+// A simple character: round head, rounded body, arms and legs, drawn in the text colour.
+function jumper() {
+  const root = svg("svg", { viewBox: "0 0 60 100", class: "jumper-svg", "aria-hidden": "true", focusable: "false" });
+  const body = svg("g", { class: "jumper" });
+  const legs = svg("g", { class: "legs", fill: "none", stroke: "currentColor", "stroke-width": "9", "stroke-linecap": "round" });
+  legs.append(svg("path", { d: "M25 62 L19 90" }), svg("path", { d: "M35 62 L41 90" }));
+  const torso = svg("path", { d: "M30 30 L30 62", fill: "none", stroke: "currentColor", "stroke-width": "16", "stroke-linecap": "round" });
+  const arms = svg("g", { class: "arms", fill: "none", stroke: "currentColor", "stroke-width": "8", "stroke-linecap": "round" });
+  arms.append(svg("path", { d: "M30 34 L12 52" }), svg("path", { d: "M30 34 L48 52" }));
+  const head = svg("circle", { cx: "30", cy: "15", r: "11", fill: "currentColor" });
+  body.append(legs, torso, arms, head);
+  root.append(body);
+  return root;
+}
+
+function heroNode(p) {
+  const box = make("div");
+  box.className = "hero-inner";
+  box.append(make("h2", p.heading), make("p", p.text));
+  const lines = make("div");
+  lines.className = "lines";
+  p.rows
+    .filter((r) => r.id.startsWith("hero-line"))
+    .forEach((r) => lines.append(make("p", r.label)));
+  const stage = make("div");
+  stage.className = "stage";
+  stage.style.setProperty("--jump-before-in", p.data.before);
+  stage.style.setProperty("--jump-after-in", p.data.after);
+  ["before", "after"].forEach((side) => {
+    const row = p.rows.find((r) => r.id === "hero-" + side);
+    const fig = make("figure");
+    fig.className = "side " + side;
+    const scene = make("div");
+    scene.className = "scene";
+    const target = make("span", row.detail);
+    target.className = "target";
+    scene.append(target, jumper());
+    const cap = make("figcaption");
+    cap.append(make("strong", row.label));
+    fig.append(scene, cap);
+    stage.append(fig);
+  });
+  box.append(lines, stage);
+  return box;
+}
+
+// A picture to choose from this phone; its size goes to the core before the bytes go anywhere.
+function avatarPanelNode(p, box) {
+  const wrap = make("div");
+  p.fields.forEach((f) => wrap.append(fieldNode(f, p.id)));
+  const file = make("input");
+  file.type = "file";
+  file.accept = "image/*";
+  file.id = "avatar-file";
+  const label = make("label", labels.page_avatar_choose);
+  label.htmlFor = file.id;
+  file.addEventListener("change", async () => {
+    const chosen = file.files[0];
+    if (!chosen) return;
+    const value = JSON.stringify({ value: "", fields: { athlete: wrap.querySelector("select").value, bytes: String(chosen.size) } });
+    const ok = await perform("avatar.save", value, { file: chosen });
+    if (!ok) file.value = "";
+  });
+  wrap.append(label, file);
+  return wrap;
+}
+
 function rowNode(r) {
   const li = make("li");
   li.dataset.row = r.id;
@@ -154,6 +276,18 @@ function panel(p) {
     box.append(m);
   }
   if (p.text) box.append(make("p", p.text));
+  if (p.kind === "hero") {
+    box.replaceChildren(heroNode(p));
+    return box;
+  }
+  if (p.kind === "avatar") {
+    box.append(avatarPanelNode(p, box));
+    return box;
+  }
+  if (p.kind === "people") {
+    if ((p.rows || []).length) box.append(peopleNode(p));
+    return box;
+  }
   if (p.kind === "recorder") {
     if (p.marker) box.append(make("p", p.marker));
     audio.mount(box, p, labels, cfg.audio, {
@@ -187,8 +321,11 @@ function draw(ui) {
   const who = el("who");
   who.replaceChildren();
   if (ui.header.who) {
-    who.append(button({ name: "athlete.switch", label: ui.header.who, enabled: true }, () => perform("athlete.switch", "")));
-    who.querySelector("button").title = labels.page_switch;
+    const me = button({ name: "athlete.switch", label: ui.header.who, enabled: true }, () => perform("athlete.switch", ""));
+    me.title = labels.page_switch;
+    me.prepend(avatarNode(ui.header.avatar, ui.header.who.charAt(0), 0));
+    me.className = "me";
+    who.append(me);
   }
   el("banner").textContent = ui.header.offline || (live ? "" : labels.page_demo);
   el("panels").replaceChildren(...ui.panels.map(panel));
@@ -244,6 +381,10 @@ async function runRequests(requests, name, extra) {
     for (const r of requests) {
       if (r.rpc === "get_note_audio") {
         await playDemoNote();
+      } else if (r.rpc === "set_avatar") {
+        avatarUrls.set(r.args.athlete, URL.createObjectURL(extra.file));
+        const result = call(act, JSON.stringify(state), glossary, "data.apply", JSON.stringify(r));
+        if (result.ok) draw(result.ok);
       } else {
         const result = call(act, JSON.stringify(state), glossary, "data.apply", JSON.stringify(r));
         if (result.error) say(result.error);
@@ -265,6 +406,9 @@ async function runRequests(requests, name, extra) {
         await play(await net.fetchAudio(r.args.id));
       } else if (r.rpc === "add_note") {
         await net.addNote(r.args, extra.blob);
+      } else if (r.rpc === "set_avatar") {
+        await net.setAvatar(r.args, extra.file);
+        avatarUrls.delete(r.args.athlete);
       } else {
         await net.run(r);
       }
@@ -351,6 +495,7 @@ async function main() {
   root.setProperty("--tap", ui.tap_px + "px");
   root.setProperty("--text", ui.text_px + "px");
   root.setProperty("--gutter", ui.gutter_px + "px");
+  root.setProperty("--inch-px", ui.inch_px + "px");
   const first = call(start, strings, glossary, today());
   if (first.error) {
     say(first.error);

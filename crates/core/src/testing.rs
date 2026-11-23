@@ -15,6 +15,7 @@ pub fn sample_data() -> Data {
         name: name.to_string(),
         start: "2026-11-30".to_string(),
         goal: None,
+        avatar: false,
     };
     let max = |id: u64, athlete: u64, lift: &str, weight: u32, date: &str| MaxRec {
         id,
