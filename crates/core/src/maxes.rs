@@ -96,9 +96,24 @@ mod tests {
     fn the_max_a_date_uses_is_the_latest_on_or_before_it() {
         let data = sample_data();
         // Athlete 1 has anvil_squat 285 on 2026-10-05 and 305 on 2026-11-02.
-        assert_eq!(current_max(&data, 1, "anvil_squat", d("2026-12-01")).unwrap().weight, 305);
-        assert_eq!(current_max(&data, 1, "anvil_squat", d("2026-11-02")).unwrap().weight, 305);
-        assert_eq!(current_max(&data, 1, "anvil_squat", d("2026-11-01")).unwrap().weight, 285);
+        assert_eq!(
+            current_max(&data, 1, "anvil_squat", d("2026-12-01"))
+                .unwrap()
+                .weight,
+            305
+        );
+        assert_eq!(
+            current_max(&data, 1, "anvil_squat", d("2026-11-02"))
+                .unwrap()
+                .weight,
+            305
+        );
+        assert_eq!(
+            current_max(&data, 1, "anvil_squat", d("2026-11-01"))
+                .unwrap()
+                .weight,
+            285
+        );
         assert!(current_max(&data, 1, "anvil_squat", d("2026-10-04")).is_none());
     }
 
@@ -112,8 +127,18 @@ mod tests {
             weight: 400,
             date: "2026-12-10".into(),
         });
-        assert_eq!(current_max(&data, 1, "anvil_squat", d("2026-12-09")).unwrap().weight, 305);
-        assert_eq!(current_max(&data, 1, "anvil_squat", d("2026-12-10")).unwrap().weight, 400);
+        assert_eq!(
+            current_max(&data, 1, "anvil_squat", d("2026-12-09"))
+                .unwrap()
+                .weight,
+            305
+        );
+        assert_eq!(
+            current_max(&data, 1, "anvil_squat", d("2026-12-10"))
+                .unwrap()
+                .weight,
+            400
+        );
         let before = weight_for(&data, 1, "anvil_squat", 75, d("2026-12-09")).unwrap();
         let after = weight_for(&data, 1, "anvil_squat", 75, d("2026-12-10")).unwrap();
         assert_eq!((before.weight, after.weight), (230, 300));
@@ -131,7 +156,12 @@ mod tests {
                 date: "2026-11-20".into(),
             });
         }
-        assert_eq!(current_max(&data, 1, "anvil_squat", d("2026-11-21")).unwrap().weight, 300);
+        assert_eq!(
+            current_max(&data, 1, "anvil_squat", d("2026-11-21"))
+                .unwrap()
+                .weight,
+            300
+        );
     }
 
     #[test]
@@ -157,7 +187,10 @@ mod tests {
     #[test]
     fn history_lists_newest_first() {
         let data = sample_data();
-        let h: Vec<u32> = history(&data, 1, "anvil_squat").iter().map(|m| m.weight).collect();
+        let h: Vec<u32> = history(&data, 1, "anvil_squat")
+            .iter()
+            .map(|m| m.weight)
+            .collect();
         assert_eq!(h, vec![305, 285]);
     }
 }

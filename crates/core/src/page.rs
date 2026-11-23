@@ -151,7 +151,10 @@ mod tests {
 
     #[test]
     fn text_that_is_not_json_is_rejected() {
-        assert!(matches!(parse_strings("title: T", &[]), Err(StringsError::NotJson(_))));
+        assert!(matches!(
+            parse_strings("title: T", &[]),
+            Err(StringsError::NotJson(_))
+        ));
     }
 
     #[test]

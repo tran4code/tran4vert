@@ -219,7 +219,11 @@ async function perform(name, value, extra) {
     return false;
   }
   draw(result.ok);
-  if (name === "passcode.submit") say(labels.page_checking);
+  if (name === "passcode.submit") {
+    const typed = JSON.parse(value).fields;
+    net.setCodes({ group: typed.group, coach: typed.coach });
+    say(labels.page_checking);
+  }
   await runRequests(result.ok.requests, name, extra);
   return true;
 }

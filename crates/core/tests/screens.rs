@@ -84,7 +84,8 @@ impl Page {
     }
 
     fn act(&mut self, name: &str, value: &str) {
-        self.try_act(name, value).unwrap_or_else(|e| panic!("{name}: {e}"));
+        self.try_act(name, value)
+            .unwrap_or_else(|e| panic!("{name}: {e}"));
     }
 
     /// Signs in with the sample data as the given athlete.
@@ -105,7 +106,11 @@ impl Page {
     }
 
     fn has_panel(&self, id: &str) -> bool {
-        self.ui["panels"].as_array().unwrap().iter().any(|p| p["id"] == id)
+        self.ui["panels"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|p| p["id"] == id)
     }
 
     fn row(&self, id: &str) -> &Value {
@@ -215,7 +220,12 @@ fn the_phone_remembers_the_name_and_ignores_a_kept_choice_it_cannot_read() {
     assert_eq!(p.ui["screen"], "today");
     assert_eq!(p.ui["header"]["who"], "Jo");
 
-    for bad in ["", "not json", "{\"v\": 9, \"athlete\": 2}", "{\"v\": 1, \"athlete\": 77}"] {
+    for bad in [
+        "",
+        "not json",
+        "{\"v\": 9, \"athlete\": 2}",
+        "{\"v\": 1, \"athlete\": 77}",
+    ] {
         let mut q = Page::open("2026-12-01");
         q.act("saved.load", bad);
         q.act("data.load", &remote("athlete"));
@@ -268,7 +278,10 @@ fn a_new_max_changes_the_weights_from_its_date_on_and_not_before() {
     let mut p = Page::signed_in("2026-12-01", "athlete", 1);
     p.act(
         "max.add",
-        &form("", json!({"lift": "anvil_squat", "weight": "400", "date": "2026-12-02"})),
+        &form(
+            "",
+            json!({"lift": "anvil_squat", "weight": "400", "date": "2026-12-02"}),
+        ),
     );
     assert_eq!(p.requests().len(), 1);
     assert_eq!(p.requests()[0]["rpc"], "add_max");
@@ -296,7 +309,13 @@ fn a_new_max_changes_the_weights_from_its_date_on_and_not_before() {
 fn a_bad_max_is_refused_in_words() {
     let mut p = Page::signed_in("2026-12-01", "athlete", 1);
     let e = p
-        .try_act("max.add", &form("", json!({"lift": "anvil_squat", "weight": "heavy", "date": "2026-12-01"})))
+        .try_act(
+            "max.add",
+            &form(
+                "",
+                json!({"lift": "anvil_squat", "weight": "heavy", "date": "2026-12-01"}),
+            ),
+        )
         .unwrap_err();
     assert_eq!(e, "Type the weight as a whole number of pounds.");
     for (lift, weight, date) in [
@@ -306,9 +325,15 @@ fn a_bad_max_is_refused_in_words() {
         ("nope", "300", "2026-12-01"),
     ] {
         let e = p
-            .try_act("max.add", &form("", json!({"lift": lift, "weight": weight, "date": date})))
+            .try_act(
+                "max.add",
+                &form("", json!({"lift": lift, "weight": weight, "date": date})),
+            )
             .unwrap_err();
-        assert!(e.starts_with("The max was not saved"), "{lift} {weight} {date}: {e}");
+        assert!(
+            e.starts_with("The max was not saved"),
+            "{lift} {weight} {date}: {e}"
+        );
     }
 }
 
@@ -332,7 +357,9 @@ fn a_voice_note_shows_on_every_block_of_its_lift_for_every_athlete_and_on_no_oth
         assert_eq!(first["actions"][0]["value"], "2");
         // The stone press has none.
         let press = p.row("session-c1-1-1-b2");
-        assert!(press["rows"].as_array().map_or(true, |r| r.iter().all(|x| x["tag"] != "Voice note")));
+        assert!(press["rows"]
+            .as_array()
+            .is_none_or(|r| r.iter().all(|x| x["tag"] != "Voice note")));
     }
     // Friday's anvil squat block, in the same week, also offers them.
     let mut p = Page::signed_in("2026-12-01", "athlete", 1);
@@ -344,9 +371,17 @@ fn a_voice_note_shows_on_every_block_of_its_lift_for_every_athlete_and_on_no_oth
     // A note on the rope clean is not on the hang rope clean.
     p.act("day.show", "2026-11-30");
     let hang = p.row("session-c1-1-0-b3");
-    assert!(hang["rows"].as_array().unwrap().iter().all(|x| x["tag"] != "Voice note"));
+    assert!(hang["rows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .all(|x| x["tag"] != "Voice note"));
     let clean = p.row("session-c1-1-0-b2");
-    assert!(clean["rows"].as_array().unwrap().iter().any(|x| x["label"] == "Fast elbows"));
+    assert!(clean["rows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|x| x["label"] == "Fast elbows"));
 }
 
 #[test]
@@ -369,7 +404,12 @@ fn circuits_collapse_to_a_title_and_a_dose_and_open_to_their_items() {
     assert_eq!(c["label"], "Wake-up circuit");
     assert_eq!(c["detail"], "2 rounds · 10 each");
     assert_eq!(c["open"], false);
-    let items: Vec<&str> = c["rows"].as_array().unwrap().iter().map(|r| s(&r["label"])).collect();
+    let items: Vec<&str> = c["rows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|r| s(&r["label"]))
+        .collect();
     assert_eq!(items, vec!["Cat cow", "Bird dog", "Dead bug"]);
 }
 
@@ -380,9 +420,15 @@ fn notes_text_and_dose_overrides_show_word_for_word() {
     assert_eq!(p.row("session-c1-1-2-b0")["detail"], "2 sets of 20 seconds");
     assert_eq!(p.row("session-c1-1-2-b1")["label"], "Easy bike");
     assert_eq!(p.row("session-c1-1-2-b1")["detail"], "Twenty minutes, easy.");
-    assert_eq!(p.row("session-c1-1-2-b2")["note"], "Walk for twenty easy minutes.");
+    assert_eq!(
+        p.row("session-c1-1-2-b2")["note"],
+        "Walk for twenty easy minutes."
+    );
     let q = Page::signed_in("2026-11-30", "athlete", 1);
-    assert_eq!(q.row("session-c1-1-0-b1")["note"], "Start light and add weight if the bar moves fast.");
+    assert_eq!(
+        q.row("session-c1-1-0-b1")["note"],
+        "Start light and add weight if the bar moves fast."
+    );
 }
 
 // ---- the week ----
@@ -456,7 +502,10 @@ fn a_date_with_no_session_says_why_in_words() {
     p.act("day.show", "2026-12-14");
     assert_eq!(p.panel("empty")["text"], "Cycle 1, week 3 is not loaded yet.");
     p.act("day.show", "2026-11-20");
-    assert_eq!(p.panel("empty")["text"], "The program starts on Monday 30 Nov 2026.");
+    assert_eq!(
+        p.panel("empty")["text"],
+        "The program starts on Monday 30 Nov 2026."
+    );
 }
 
 // ---- moving a session ----
@@ -500,17 +549,33 @@ fn the_coach_moves_one_session_for_all_three_and_an_athlete_cannot() {
     let mut p = Page::signed_in("2026-12-01", "coach", 1);
     let key = json!({"cycle": "c1", "week": 1, "dow": 1}).to_string();
     p.act("move.start", &key);
-    let actions: Vec<&str> = p.panel("move")["actions"].as_array().unwrap().iter().map(|a| s(&a["name"])).collect();
+    let actions: Vec<&str> = p.panel("move")["actions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|a| s(&a["name"]))
+        .collect();
     assert_eq!(actions, vec!["move.save", "move.save_all", "move.cancel"]);
     p.act("move.save_all", &form(&key, json!({"to": "2026-12-03"})));
-    let who: Vec<u64> = p.requests().iter().map(|r| r["args"]["athlete"].as_u64().unwrap()).collect();
+    let who: Vec<u64> = p
+        .requests()
+        .iter()
+        .map(|r| r["args"]["athlete"].as_u64().unwrap())
+        .collect();
     assert_eq!(who, vec![1, 2, 3]);
 
     let mut q = Page::signed_in("2026-12-01", "athlete", 1);
     q.act("move.start", &key);
-    let actions: Vec<&str> = q.panel("move")["actions"].as_array().unwrap().iter().map(|a| s(&a["name"])).collect();
+    let actions: Vec<&str> = q.panel("move")["actions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|a| s(&a["name"]))
+        .collect();
     assert_eq!(actions, vec!["move.save", "move.cancel"]);
-    let e = q.try_act("move.save_all", &form(&key, json!({"to": "2026-12-03"}))).unwrap_err();
+    let e = q
+        .try_act("move.save_all", &form(&key, json!({"to": "2026-12-03"})))
+        .unwrap_err();
     assert_eq!(e, "That needs the coach passcode.");
 }
 
@@ -519,8 +584,13 @@ fn a_move_to_a_bad_date_or_to_the_sessions_own_date_is_refused() {
     let mut p = Page::signed_in("2026-12-01", "athlete", 1);
     let key = json!({"cycle": "c1", "week": 1, "dow": 1}).to_string();
     for to in ["2026-12-01", "2026-02-30", "", "soon"] {
-        let e = p.try_act("move.save", &form(&key, json!({"to": to}))).unwrap_err();
-        assert_eq!(e, "That session cannot move there. Pick a different date.", "{to}");
+        let e = p
+            .try_act("move.save", &form(&key, json!({"to": to})))
+            .unwrap_err();
+        assert_eq!(
+            e, "That session cannot move there. Pick a different date.",
+            "{to}"
+        );
     }
 }
 
@@ -567,15 +637,28 @@ fn the_cycles_screen_marks_weeks_with_no_data_and_lists_what_is_not_captured() {
             .collect()
     };
     assert_eq!(tags("c1"), vec!["Loaded", "Loaded", "Not loaded", "Not loaded"]);
-    assert_eq!(tags("c2"), vec!["Loaded", "Not loaded", "Not loaded", "Not loaded"]);
+    assert_eq!(
+        tags("c2"),
+        vec!["Loaded", "Not loaded", "Not loaded", "Not loaded"]
+    );
     assert_eq!(p.panel("cycle-c1")["heading"], "Cycle One");
     assert_eq!(p.panel("cycle-c1")["text"], "Emphasis: Base strength");
     assert_eq!(p.row("cycle-c1-w1")["detail"], "Learn the lifts");
     assert_eq!(p.row("cycle-c1-w1")["marker"], "You are here");
     assert_eq!(p.row("cycle-c2-w2")["detail"], "Theme not captured");
     let program: Value = serde_json::from_str(&read("tests/fixtures/sample_program.json")).unwrap();
-    let expected: Vec<&str> = program["not_captured"].as_array().unwrap().iter().map(|v| s(v)).collect();
-    let shown: Vec<&str> = p.panel("not-captured")["rows"].as_array().unwrap().iter().map(|r| s(&r["label"])).collect();
+    let expected: Vec<&str> = program["not_captured"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(s)
+        .collect();
+    let shown: Vec<&str> = p.panel("not-captured")["rows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|r| s(&r["label"]))
+        .collect();
     assert_eq!(shown, expected);
     assert_eq!(shown.len(), 3);
     assert_eq!(p.row("cycle-c1-note")["note"], "Work through the weeks in order.");
@@ -588,7 +671,10 @@ fn the_lift_screen_shows_the_athletes_max_and_the_voice_notes() {
     assert_eq!(p.ui["title"], "Hang Rope Clean");
     assert_eq!(p.panel("lift-max")["text"], "This lift uses your Rope Clean max.");
     assert_eq!(p.row("lift-max-now")["label"], "195 lb on 2026-11-02");
-    assert!(p.panel("lift-notes")["text"].as_str().unwrap().contains("No voice note"));
+    assert!(p.panel("lift-notes")["text"]
+        .as_str()
+        .unwrap()
+        .contains("No voice note"));
     p.act("lift.show", "anvil_squat");
     assert_eq!(p.panel("lift-notes")["rows"].as_array().unwrap().len(), 2);
     assert!(!p.has_panel("recorder"));
@@ -602,19 +688,32 @@ fn the_lift_screen_shows_the_athletes_max_and_the_voice_notes() {
 fn only_the_coach_has_the_coach_screen_and_its_changes() {
     let mut p = Page::signed_in("2026-12-01", "athlete", 1);
     assert!(p.try_act("screen.show", "coach").is_err());
-    let nav: Vec<&str> = p.ui["nav"].as_array().unwrap().iter().map(|n| s(&n["label"])).collect();
+    let nav: Vec<&str> = p.ui["nav"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|n| s(&n["label"]))
+        .collect();
     assert_eq!(nav, vec!["Today", "Week", "Maxes", "Cycles"]);
     for (name, value) in [
         ("start.set", form("", json!({"start_1": "2026-12-07"}))),
         ("cyclenote.set", form("", json!({"cycle_c1": "x"}))),
         ("note.delete", "1".to_string()),
-        ("note.save", form("", json!({"lift": "anvil_squat", "title": "T", "ms": "5000"}))),
+        (
+            "note.save",
+            form("", json!({"lift": "anvil_squat", "title": "T", "ms": "5000"})),
+        ),
     ] {
         let e = p.try_act(name, &value).unwrap_err();
         assert_eq!(e, "That needs the coach passcode.", "{name}");
     }
     let c = Page::signed_in("2026-12-01", "coach", 1);
-    let nav: Vec<&str> = c.ui["nav"].as_array().unwrap().iter().map(|n| s(&n["label"])).collect();
+    let nav: Vec<&str> = c.ui["nav"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|n| s(&n["label"]))
+        .collect();
     assert_eq!(nav, vec!["Today", "Week", "Maxes", "Cycles", "Coach"]);
 }
 
@@ -622,7 +721,13 @@ fn only_the_coach_has_the_coach_screen_and_its_changes() {
 fn the_coach_records_a_note_and_deletes_one() {
     let mut p = Page::signed_in("2026-12-01", "coach", 1);
     // 40.001 seconds rounds up to 41.
-    p.act("note.save", &form("", json!({"lift": "anvil_squat", "title": "Knees out", "ms": "40001"})));
+    p.act(
+        "note.save",
+        &form(
+            "",
+            json!({"lift": "anvil_squat", "title": "Knees out", "ms": "40001"}),
+        ),
+    );
     let r = &p.requests()[0];
     assert_eq!(r["rpc"], "add_note");
     assert_eq!(r["args"]["seconds"], 41);
@@ -634,9 +739,15 @@ fn the_coach_records_a_note_and_deletes_one() {
     assert_eq!(p.row("session-c1-1-1-b1-voice-4")["detail"], "0:41 · 2026-12-01");
     for (title, ms) in [("", "5000"), ("T", "0"), ("T", "181000"), ("T", "soon")] {
         let e = p
-            .try_act("note.save", &form("", json!({"lift": "anvil_squat", "title": title, "ms": ms})))
+            .try_act(
+                "note.save",
+                &form("", json!({"lift": "anvil_squat", "title": title, "ms": ms})),
+            )
             .unwrap_err();
-        assert!(e.starts_with("The voice note was not saved"), "{title:?} {ms}: {e}");
+        assert!(
+            e.starts_with("The voice note was not saved"),
+            "{title:?} {ms}: {e}"
+        );
     }
     p.act("note.delete", "4");
     assert_eq!(p.requests()[0]["rpc"], "delete_note");
@@ -652,18 +763,32 @@ fn the_coach_sets_start_dates_and_cycle_notes_and_only_changes_go_out() {
     assert_eq!(p.panel("coach-program")["text"], "3 of 8 weeks are loaded.");
     p.act(
         "start.set",
-        &form("", json!({"start_1": "2026-11-30", "start_2": "2026-12-07", "start_3": "2026-11-30"})),
+        &form(
+            "",
+            json!({"start_1": "2026-11-30", "start_2": "2026-12-07", "start_3": "2026-11-30"}),
+        ),
     );
     assert_eq!(p.requests().len(), 1);
-    assert_eq!(p.requests()[0]["args"], json!({"athlete": 2, "start": "2026-12-07"}));
-    let e = p.try_act("start.set", &form("", json!({"start_3": "2026-12-02"}))).unwrap_err();
+    assert_eq!(
+        p.requests()[0]["args"],
+        json!({"athlete": 2, "start": "2026-12-07"})
+    );
+    let e = p
+        .try_act("start.set", &form("", json!({"start_3": "2026-12-02"})))
+        .unwrap_err();
     assert_eq!(e, "The start date for Pat must be a Monday.");
     p.act("start.set", &form("", json!({"start_1": "2026-11-30"})));
     assert_eq!(p.ui["message"], "Nothing changed.");
     assert_eq!(p.requests().len(), 0);
-    p.act("cyclenote.set", &form("", json!({"cycle_c1": "Keep it easy.", "cycle_c2": ""})));
+    p.act(
+        "cyclenote.set",
+        &form("", json!({"cycle_c1": "Keep it easy.", "cycle_c2": ""})),
+    );
     assert_eq!(p.requests().len(), 1);
-    assert_eq!(p.requests()[0]["args"], json!({"cycle": "c1", "text": "Keep it easy."}));
+    assert_eq!(
+        p.requests()[0]["args"],
+        json!({"cycle": "c1", "text": "Keep it easy."})
+    );
     let request = p.requests()[0].to_string();
     p.act("data.apply", &request);
     p.act("screen.show", "cycles");
@@ -676,13 +801,24 @@ fn the_coach_sets_start_dates_and_cycle_notes_and_only_changes_go_out() {
 fn offline_the_session_is_drawn_from_what_was_kept_and_changes_are_off() {
     let mut p = Page::signed_in("2026-12-01", "athlete", 1);
     p.act("net.offline", "");
-    assert_eq!(p.ui["header"]["offline"], "Offline, as of 2026-11-23. Changes are off.");
+    assert_eq!(
+        p.ui["header"]["offline"],
+        "Offline, as of 2026-11-23. Changes are off."
+    );
     assert!(p.has_panel(TUE_LIFT));
     assert!(p.text().contains("230 lb"));
     // Every change button is disabled, and the core refuses one anyway.
     let move_button = p.panel(TUE_LIFT)["actions"][0].clone();
     assert_eq!(move_button["name"], "move.start");
-    let e = p.try_act("max.add", &form("", json!({"lift": "anvil_squat", "weight": "300", "date": "2026-12-01"}))).unwrap_err();
+    let e = p
+        .try_act(
+            "max.add",
+            &form(
+                "",
+                json!({"lift": "anvil_squat", "weight": "300", "date": "2026-12-01"}),
+            ),
+        )
+        .unwrap_err();
     assert_eq!(e, "This phone is offline. Changes wait until it is back online.");
     // A fresh load brings it back.
     p.act("data.load", &remote("athlete"));
@@ -703,7 +839,12 @@ fn the_demo_loads_the_sample_program_with_made_up_athletes_and_a_coach_toggle() 
     let mut p = Page::open("2026-12-02");
     p.act("demo.start", &read("tests/fixtures/sample_program.json"));
     assert_eq!(p.ui["screen"], "who");
-    let names: Vec<&str> = p.panel("who")["rows"].as_array().unwrap().iter().map(|r| s(&r["label"])).collect();
+    let names: Vec<&str> = p.panel("who")["rows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|r| s(&r["label"]))
+        .collect();
     assert_eq!(names, vec!["Sam", "Jo", "Pat"]);
     assert!(p.has_panel("demo-coach"));
     p.act("athlete.pick", "1");
@@ -733,11 +874,26 @@ fn nothing_marked_private_in_the_program_file_reaches_a_screen_or_the_state() {
 #[test]
 fn an_unknown_action_a_bad_screen_or_a_bad_state_is_an_error_in_words() {
     let mut p = Page::signed_in("2026-12-01", "athlete", 1);
-    assert_eq!(p.try_act("screen.jump", "today").unwrap_err(), "Unknown action \"screen.jump\".");
-    assert_eq!(p.try_act("screen.show", "nowhere").unwrap_err(), "There is no screen nowhere.");
-    assert_eq!(p.try_act("athlete.pick", "9").unwrap_err(), "That athlete is not here.");
-    assert_eq!(p.try_act("lift.show", "nope").unwrap_err(), "That lift is not in the program.");
-    assert_eq!(p.try_act("day.show", "someday").unwrap_err(), "someday is not a date.");
+    assert_eq!(
+        p.try_act("screen.jump", "today").unwrap_err(),
+        "Unknown action \"screen.jump\"."
+    );
+    assert_eq!(
+        p.try_act("screen.show", "nowhere").unwrap_err(),
+        "There is no screen nowhere."
+    );
+    assert_eq!(
+        p.try_act("athlete.pick", "9").unwrap_err(),
+        "That athlete is not here."
+    );
+    assert_eq!(
+        p.try_act("lift.show", "nope").unwrap_err(),
+        "That lift is not in the program."
+    );
+    assert_eq!(
+        p.try_act("day.show", "someday").unwrap_err(),
+        "someday is not a date."
+    );
     let out = api::act("{not json", &read("GLOSSARY.md"), "screen.show", "today");
     assert!(out.contains("The state could not be read"));
     let out = api::start(&read("data/strings.json"), &read("GLOSSARY.md"), "tomorrow");
@@ -752,7 +908,20 @@ fn the_glossary_reaches_the_page_with_its_numbers_filled_in() {
     let p = Page::open("2026-12-01");
     let hints = p.ui["hints"].as_array().unwrap();
     let terms: Vec<&str> = hints.iter().map(|h| s(&h["term"])).collect();
-    for t in ["Athlete", "Coach", "Cycle", "Isometric hold", "Lift", "Max", "Moved session", "Session", "Test", "Voice note", "Week", "Working weight"] {
+    for t in [
+        "Athlete",
+        "Coach",
+        "Cycle",
+        "Isometric hold",
+        "Lift",
+        "Max",
+        "Moved session",
+        "Session",
+        "Test",
+        "Voice note",
+        "Week",
+        "Working weight",
+    ] {
         assert!(terms.contains(&t), "no glossary entry for {t}");
     }
     let def = |t: &str| s(&hints.iter().find(|h| h["term"] == t).unwrap()["definition"]).to_string();
@@ -808,14 +977,22 @@ fn every_string_the_screens_use_is_in_the_strings_file() {
             }
         }
     }
-    assert!(missing.is_empty(), "keys the code uses and the file lacks:\n{}", missing.join("\n"));
+    assert!(
+        missing.is_empty(),
+        "keys the code uses and the file lacks:\n{}",
+        missing.join("\n")
+    );
 }
 
 #[test]
 fn every_string_in_the_strings_file_is_used_by_the_core_or_the_page() {
     let file: Value = serde_json::from_str(&read("data/strings.json")).unwrap();
     let mut code = String::new();
-    for path in ["crates/core/src/view.rs", "crates/core/src/api.rs", "crates/core/src/page.rs"] {
+    for path in [
+        "crates/core/src/view.rs",
+        "crates/core/src/api.rs",
+        "crates/core/src/page.rs",
+    ] {
         code.push_str(&read(path));
     }
     let mut page = String::new();

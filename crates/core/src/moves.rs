@@ -184,8 +184,14 @@ mod tests {
         assert_eq!(new.entries.len(), 2);
         match (&new.entries[0], &new.entries[1]) {
             (
-                Entry::Session { slot: first, moved_from: Some(from) },
-                Entry::Session { slot: second, moved_from: None },
+                Entry::Session {
+                    slot: first,
+                    moved_from: Some(from),
+                },
+                Entry::Session {
+                    slot: second,
+                    moved_from: None,
+                },
             ) => {
                 assert_eq!(first.day.dow, "tue");
                 assert_eq!(second.day.dow, "thu");
@@ -201,12 +207,18 @@ mod tests {
         mv(&mut data, 1, 1, 1, "2026-12-03").unwrap();
         apply(
             &mut data,
-            &Request::new("undo_move", json!({"athlete": 1, "cycle": "c1", "week": 1, "dow": 1})),
+            &Request::new(
+                "undo_move",
+                json!({"athlete": 1, "cycle": "c1", "week": 1, "dow": 1}),
+            ),
         )
         .unwrap();
         let a = data.athlete(1).unwrap().clone();
         let back = day_view(&data, &a, d("2026-12-01"));
-        assert!(matches!(back.entries[..], [Entry::Session { moved_from: None, .. }]));
+        assert!(matches!(
+            back.entries[..],
+            [Entry::Session { moved_from: None, .. }]
+        ));
         assert_eq!(day_view(&data, &a, d("2026-12-03")).entries.len(), 1);
     }
 
@@ -246,7 +258,10 @@ mod tests {
         let other = data.athlete(2).unwrap().clone();
         // Athlete 2 starts the same Monday and keeps the session on its own date.
         let day = day_view(&data, &other, d("2026-12-01"));
-        assert!(matches!(day.entries[..], [Entry::Session { moved_from: None, .. }]));
+        assert!(matches!(
+            day.entries[..],
+            [Entry::Session { moved_from: None, .. }]
+        ));
     }
 
     #[test]
@@ -254,9 +269,15 @@ mod tests {
         let mut data = sample_data();
         assert!(mv(&mut data, 1, 1, 1, "2026-12-01").unwrap_err().contains("undo"));
         // Week three of cycle one is not loaded.
-        assert!(mv(&mut data, 1, 3, 0, "2026-12-20").unwrap_err().contains("not in the program"));
-        assert!(mv(&mut data, 1, 1, 1, "2026-12-32").unwrap_err().contains("not a date"));
-        assert!(mv(&mut data, 9, 1, 1, "2026-12-03").unwrap_err().contains("no athlete"));
+        assert!(mv(&mut data, 1, 3, 0, "2026-12-20")
+            .unwrap_err()
+            .contains("not in the program"));
+        assert!(mv(&mut data, 1, 1, 1, "2026-12-32")
+            .unwrap_err()
+            .contains("not a date"));
+        assert!(mv(&mut data, 9, 1, 1, "2026-12-03")
+            .unwrap_err()
+            .contains("no athlete"));
         assert!(data.moves.is_empty());
     }
 
@@ -264,7 +285,10 @@ mod tests {
     fn a_date_with_no_session_says_why() {
         let data = sample_data();
         let a = data.athlete(1).unwrap().clone();
-        assert_eq!(day_view(&data, &a, d("2026-11-29")).empty, Some(Empty::BeforeStart(d("2026-11-30"))));
+        assert_eq!(
+            day_view(&data, &a, d("2026-11-29")).empty,
+            Some(Empty::BeforeStart(d("2026-11-30")))
+        );
         assert_eq!(day_view(&data, &a, d("2026-12-06")).empty, Some(Empty::Rest));
         assert_eq!(
             day_view(&data, &a, d("2026-12-14")).empty,

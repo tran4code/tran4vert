@@ -214,7 +214,9 @@ impl Program {
         for (id, lift) in &self.lifts {
             if let Some(from) = &lift.max_from {
                 if !self.lifts.contains_key(from) {
-                    return Err(format!("Lift \"{id}\" takes its max from \"{from}\", which is not a lift."));
+                    return Err(format!(
+                        "Lift \"{id}\" takes its max from \"{from}\", which is not a lift."
+                    ));
                 }
             }
         }
@@ -281,7 +283,9 @@ impl Program {
     fn check_note(&self, place: &str, _cycle: &Cycle, note: &str) -> Result<(), String> {
         if let Some(name) = note_reference(note) {
             if name != "cycle_note" && !self.notes.contains_key(name) {
-                return Err(format!("In {place}: \"@{name}\" is not one of the program's notes."));
+                return Err(format!(
+                    "In {place}: \"@{name}\" is not one of the program's notes."
+                ));
             }
         }
         Ok(())
@@ -355,7 +359,10 @@ mod tests {
         let p = Program::parse(SAMPLE).unwrap();
         assert_eq!(p.max_lift("rope_hang_clean"), "rope_clean");
         assert_eq!(p.max_lift("rope_clean"), "rope_clean");
-        assert_eq!(p.max_lifts(), vec!["anvil_squat", "kettle_hinge", "rope_clean", "stone_press"]);
+        assert_eq!(
+            p.max_lifts(),
+            vec!["anvil_squat", "kettle_hinge", "rope_clean", "stone_press"]
+        );
     }
 
     fn with(old: &str, new: &str) -> String {
@@ -373,7 +380,11 @@ mod tests {
         assert!(e.contains("\"rope_dirty\" is not a lift"), "{e}");
         let e = Program::parse(&with("@walk_note", "@walk_nope")).unwrap_err();
         assert!(e.contains("\"@walk_nope\""), "{e}");
-        let e = Program::parse(&with("\"max_from\": \"rope_clean\"", "\"max_from\": \"rope_none\"")).unwrap_err();
+        let e = Program::parse(&with(
+            "\"max_from\": \"rope_clean\"",
+            "\"max_from\": \"rope_none\"",
+        ))
+        .unwrap_err();
         assert!(e.contains("\"rope_none\""), "{e}");
     }
 
@@ -389,6 +400,8 @@ mod tests {
 
     #[test]
     fn text_that_is_not_a_program_is_refused() {
-        assert!(Program::parse("not json").unwrap_err().contains("could not be read"));
+        assert!(Program::parse("not json")
+            .unwrap_err()
+            .contains("could not be read"));
     }
 }

@@ -43,7 +43,10 @@ mod tests {
     #[test]
     fn a_note_belongs_to_its_exact_lift_and_no_other() {
         let data = sample_data();
-        let on_squat: Vec<&str> = notes_for(&data, "anvil_squat").iter().map(|n| n.title.as_str()).collect();
+        let on_squat: Vec<&str> = notes_for(&data, "anvil_squat")
+            .iter()
+            .map(|n| n.title.as_str())
+            .collect();
         assert_eq!(on_squat, vec!["Depth cue", "Breathing"]);
         // A note on rope_clean does not show on the variant that takes its max from it.
         assert_eq!(notes_for(&data, "rope_clean").len(), 1);
@@ -64,11 +67,21 @@ mod tests {
     fn a_note_needs_a_known_lift_a_title_and_a_length_in_range() {
         let p = &sample_data().program;
         assert!(check_note(p, "anvil_squat", "Depth", 30).is_ok());
-        assert!(check_note(p, "nope", "Depth", 30).unwrap_err().contains("not a lift"));
-        assert!(check_note(p, "anvil_squat", "  ", 30).unwrap_err().contains("title"));
-        assert!(check_note(p, "anvil_squat", &"x".repeat(61), 30).unwrap_err().contains("too long"));
-        assert!(check_note(p, "anvil_squat", "Depth", 0).unwrap_err().contains("length"));
-        assert!(check_note(p, "anvil_squat", "Depth", 181).unwrap_err().contains("length"));
+        assert!(check_note(p, "nope", "Depth", 30)
+            .unwrap_err()
+            .contains("not a lift"));
+        assert!(check_note(p, "anvil_squat", "  ", 30)
+            .unwrap_err()
+            .contains("title"));
+        assert!(check_note(p, "anvil_squat", &"x".repeat(61), 30)
+            .unwrap_err()
+            .contains("too long"));
+        assert!(check_note(p, "anvil_squat", "Depth", 0)
+            .unwrap_err()
+            .contains("length"));
+        assert!(check_note(p, "anvil_squat", "Depth", 181)
+            .unwrap_err()
+            .contains("length"));
         assert!(check_note(p, "anvil_squat", "Depth", 180).is_ok());
     }
 }

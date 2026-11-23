@@ -1,36 +1,37 @@
-# A Builder tool
+# Tran4Vert
 
-Replace this file with your tool's README once `BRIEF.md` is written. `crates/core/tests/copy.rs` reads it against `TONE.md`.
+A phone web page for three friends on the same four-week-cycle jump-training program. An athlete enters the group passcode, taps their name, and sees today's session and the week, with working weights worked out from their own maxes. The coach records voice notes on a lift, and any athlete can move a session or add a max.
 
-This directory is a copy of the Builder template. Its rules are in `BUILDER-SPEC.md`, a coding agent's instructions are in `CLAUDE.md` and `AGENTS.md`, the meaning of each term is in `GLOSSARY.md`, and the rules for every string are in `TONE.md`.
+The program text, the maxes, the voice notes and the passcodes are not in this repository. Static files hold the page. A Supabase project holds the data and checks the passcode in every call. Without a project address in `web/net/config.js`, the page runs as a demo with an invented program and made-up athletes.
 
 ## Build, test and serve
 
+Set `DEVELOPER_DIR=/Library/Developer/CommandLineTools` first if the Xcode license is not accepted on this machine.
+
 ```bash
-./scripts/setup.sh              # once: Python venv with Playwright and three browsers
-cargo test --workspace          # the core, boundary, copy and storage tests, in seconds
+./scripts/setup.sh              # once: Python 3.13 venv with Playwright and its browsers
+cargo test --workspace          # the core, boundary, copy and fence tests, in seconds
 ./scripts/build.sh              # release WebAssembly build into dist/
-python3 scripts/serve.py        # http://127.0.0.1:8000/
-./scripts/check.sh              # everything, before publishing
+python3 scripts/serve.py        # http://127.0.0.1:8000/, the demo
+./scripts/check.sh              # everything, before handing off
 python3 scripts/break_tests.py  # each row of tests/breaks.json must make its test fail
-./scripts/count-tests.sh        # the test count to quote in a document
-./scripts/publish.sh            # stage 8: push dist/ to gh-pages, from a clean tree
-python3 tools/journal/new_journal.py  # once: start the design journal beside this folder
+python3.13 tools/set_project.py URL KEY   # put the project address and publishable key in the page
+python3.13 tools/seed.py        # load the program into the database (asks for the coach passcode)
+python3.13 tools/remote_check.py          # check the database refuses what it should (asks for passcodes)
 ```
 
-Needs Rust (pinned in `rust-toolchain.toml`), `wasm-bindgen-cli` 0.2.127, and Python 3. Rendering art needs `pdflatex` and `pdftocairo`; the check does not.
+Needs Rust (pinned in `rust-toolchain.toml`), `wasm-bindgen-cli` 0.2.127, and Python 3.13.
 
 ## Layout
 
 | Path | Holds |
 | --- | --- |
-| `crates/core` | every application rule; no input or output; `api.rs` is the door: `start`, and `act(name, value)` |
-| `crates/shim` | the `wasm-bindgen` functions the page calls; each is one call into the core |
-| `web/` | the static page: a generic renderer for the core's view model |
-| `data/` | reader-visible text, presentation numbers, shaders |
-| `GLOSSARY.md`, `TONE.md` | what each term means; how every string is written |
-| `tools/art/`, `styles/default/` | the art pipeline and its fallback style pack |
-| `tools/journal/` | the design journal's page, its entry kinds, and the script that starts it in `../<this folder>-journal/` |
-| `tests/browser/` | the browser check and this tool's interactions |
-| `tests/breaks.json` | one deliberate break per rule, for `scripts/break_tests.py` |
-| `scripts/` | build, check, serve, publish, import audit, mutation audit, test count |
+| `crates/core` | every rule: dates, the schedule, moved sessions, maxes and working weights, voice notes, the screens |
+| `crates/shim` | three functions the page calls; each is one call into the core |
+| `web/` | the static page; `net/` is the one place that talks to the database, `save/` the one place that keeps anything on the phone |
+| `data/` | reader-visible text, presentation numbers, the app manifest's name and colours |
+| `supabase/schema.sql` | the tables (closed to the public key) and the functions that check the passcode |
+| `tools/` | the seed tool, the remote check, the project setter and the journal tools |
+| `tests/fixtures/` | the invented sample program the tests and the demo use |
+| `tests/browser/` | the browser check: the demo in four engines, then the live path against a pretend database |
+| `private/` | the transcribed program; ignored by git |

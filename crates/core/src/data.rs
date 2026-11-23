@@ -94,7 +94,10 @@ impl Data {
         Program::parse(&program_text)?;
         for a in &data.athletes {
             if dates::parse(&a.start).is_none() {
-                return Err(format!("An athlete has the start date \"{}\", which is not a date.", a.start));
+                return Err(format!(
+                    "An athlete has the start date \"{}\", which is not a date.",
+                    a.start
+                ));
             }
         }
         Ok(data)
@@ -149,7 +152,8 @@ pub fn apply(data: &mut Data, request: &Request) -> Result<(), String> {
         "add_max" => {
             let athlete = number(a, "athlete")?;
             let lift = text(a, "lift")?.to_string();
-            let weight = u32::try_from(number(a, "weight")?).map_err(|_| "The weight is too large.".to_string())?;
+            let weight =
+                u32::try_from(number(a, "weight")?).map_err(|_| "The weight is too large.".to_string())?;
             let date = text(a, "date")?.to_string();
             if data.athlete(athlete).is_none() {
                 return Err(format!("There is no athlete {athlete}."));
@@ -201,7 +205,8 @@ pub fn apply(data: &mut Data, request: &Request) -> Result<(), String> {
         "add_note" => {
             let lift = text(a, "lift")?.to_string();
             let title = text(a, "title")?.trim().to_string();
-            let seconds = u32::try_from(number(a, "seconds")?).map_err(|_| "The length is too large.".to_string())?;
+            let seconds =
+                u32::try_from(number(a, "seconds")?).map_err(|_| "The length is too large.".to_string())?;
             let date = text(a, "date")?.to_string();
             crate::notes::check_note(&data.program, &lift, &title, seconds)?;
             let id = next_id(data.notes.iter().map(|n| n.id));

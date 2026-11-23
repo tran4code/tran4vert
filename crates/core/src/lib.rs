@@ -18,7 +18,7 @@ pub mod notes;
 pub mod page;
 pub mod program;
 pub mod schedule;
-pub mod ui;
-pub mod view;
 #[cfg(test)]
 mod testing;
+pub mod ui;
+pub mod view;

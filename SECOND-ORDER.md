@@ -26,6 +26,11 @@ One row per assumption, surprise or open item. **Kind** is *divergence* (what wa
 | R2.9 | divergence | The core says which screen follows which action with the template's `screen.show`. | The core now also returns `requests`, the calls the page must make to the database, and takes `data.load`, `data.apply` and `net.*` actions. | The page makes no request of its own, and in demo mode `data.apply` changes the core's copy. | `crates/core/tests/screens.rs` | done |
 | R2.10 | worklist | Voice notes can be played in the demo. | A voice note recorded in the demo is kept in memory by the page, and the demo plays the last one for any note. | Only the live build stores real audio. The person checks playback on a phone with the live project. | | person |
 | R2.11 | finding | The week list is easy to tap. | Each day row has a separate Open button, so the row itself is not a target (seen in the screenshots). | Left as built; a row-sized tap is a later change for the person to ask for. | | open |
+| R2.12 | finding | `supabase/schema.sql` can be tested here. | No Postgres is installed on this machine, and no Supabase project exists. The SQL has been read and never run. | `tools/remote_check.py` is the test of the schema and its functions; the live-path browser test (`tests/browser/live_mock.py`) runs the page against a pretend database that follows the same function names and arguments. | `tools/remote_check.py` | person |
+| R2.13 | worklist | The project address and key, and the passcodes, exist. | They do not: the person creates the Supabase project, runs the schema, types both passcodes into the SQL editor and adds the three athletes there. | Stopped here and asked for the address and the publishable key only. `tools/set_project.py` writes them into the page; `tools/seed.py` and `tools/remote_check.py` prompt for passcodes with getpass. | | person |
+| R2.14 | worklist | A list the agent made is not shown to a reader. | The made-up demo names (Sam, Jo, Pat), the weekday and month names, the session kind labels and every other string are agent-written and are listed at the foot of this file. | None changed. The person reads them. | `TONE.md`, `copy.rs` | person |
+| R2.15 | divergence | The week screen picks the current week from the athlete's own start date (PLAN decision 7). | Before the start it shows the first week with "Not started" days rather than a blank, and earlier weeks can be paged to. | Tested in `screens.rs`. | `the_week_screen_runs_monday_to_sunday...` | done |
+| R2.16 | finding | The Cycle 2 front-squat percentage names a max (R1.5). | The core uses the lift named by the block's `of` field and has no rule of its own; the sample program's equivalent line names a different lift to show that. | Question 3 (round 1) stays with the person; changing the answer is a program-file edit, not code. | | person |
 
 ## Strings written by the agent
 
@@ -33,3 +38,190 @@ Each reader-visible string the agent wrote, with its key, for the person to read
 
 | Key | String |
 | --- | --- |
+| `title_passcode` | Enter the passcode |
+| `title_who` | Who are you? |
+| `title_maxes` | Maxes |
+| `title_cycles` | Cycles |
+| `title_coach` | Coach |
+| `passcode_heading` | Group passcode |
+| `passcode_text` | Type the passcode the coach gave you. This phone remembers it. |
+| `passcode_group` | Passcode |
+| `passcode_coach` | Coach passcode (coach only) |
+| `passcode_enter` | Enter |
+| `who_heading` | Tap your name |
+| `who_text` | The coach set up one name for each athlete. |
+| `who_current` | You |
+| `demo_coach_text` | This is a demo with made-up data. Open it as the coach to see the coach tools. |
+| `demo_coach_button` | Open as coach |
+| `demo_athlete_1` | Sam |
+| `demo_athlete_2` | Jo |
+| `demo_athlete_3` | Pat |
+| `nav_today` | Today |
+| `nav_week` | Week |
+| `nav_maxes` | Maxes |
+| `nav_cycles` | Cycles |
+| `nav_coach` | Coach |
+| `today_title` | Today · {date} |
+| `fmt_short_date` | {dow} {day} {month} |
+| `fmt_long_date` | {dow} {day} {month} {year} |
+| `kind_jump` | Jump |
+| `kind_lift` | Lift |
+| `kind_general` | General |
+| `kind_iso` | Isometric |
+| `kind_rest` | Rest |
+| `session_where` | {cycle} · week {week} |
+| `moved_from` | Moved from {date} |
+| `moved_to` | Moved to {date} |
+| `moved_go` | Open the new date |
+| `move_button` | Move this session |
+| `move_undo` | Put it back |
+| `move_heading` | Move this session |
+| `move_text` | Pick the new date. The session shows there, marked as moved. |
+| `move_to` | New date |
+| `move_save` | Move |
+| `move_save_all` | Move for all athletes |
+| `cancel` | Cancel |
+| `back_today` | Back to today |
+| `empty_before` | The program starts on {date}. |
+| `empty_not_loaded` | Cycle {cycle}, week {week} is not loaded yet. |
+| `empty_rest` | No session on this day. |
+| `tag_coach_note` | Coach's note |
+| `tag_working_weight` | Working weight |
+| `tag_test` | Test |
+| `tag_voice_note` | Voice note |
+| `tag_not_loaded` | Not loaded |
+| `tag_loaded` | Loaded |
+| `tag_moved` | Moved |
+| `tag_today` | Today |
+| `tag_not_started` | Not started |
+| `rx_sets_reps` | {sets} × {reps} |
+| `rx_each_side` | {sets} × {reps} each side |
+| `rx_hold` | {sets} × {secs} seconds |
+| `rx_rounds` | {rounds} rounds |
+| `rx_amap` | As many as you can |
+| `rx_pct` | last {last} at {pct}% |
+| `lift_open` | Open lift |
+| `ww_line` | {weight} lb · last {last} |
+| `ww_basis` | {pct}% of your {lift} max, {max} lb |
+| `ww_none` | Last sets at {pct}% of your {lift} max |
+| `max_add_button` | Add a max |
+| `test_line` | Test: {test} |
+| `test_enter` | Enter the result |
+| `note_detail` | {length} · {date} |
+| `note_play` | Play {title} |
+| `note_delete` | Delete note |
+| `lift_max_heading` | Your max |
+| `lift_max_from` | This lift uses your {lift} max. |
+| `max_none` | You have no max for this lift yet. |
+| `max_none_short` | No max yet |
+| `max_line` | {weight} lb on {date} |
+| `lift_notes_heading` | Voice notes |
+| `lift_notes_none` | No voice note on this lift yet. |
+| `week_title` | {place} · {from} to {to} |
+| `week_place` | {cycle} · week {week} |
+| `week_before` | Before the start |
+| `week_earlier` | Earlier week |
+| `week_this` | This week |
+| `week_later` | Later week |
+| `day_open` | Open |
+| `cycle_n` | Cycle {n} |
+| `week_n` | Week {week} |
+| `max_form_heading` | Add a max |
+| `max_form_text` | A new max changes the working weights from its date on. |
+| `max_lift` | Lift |
+| `max_athlete` | Athlete |
+| `max_weight` | Weight (lb) |
+| `max_date` | Date |
+| `max_save` | Save max |
+| `max_delete` | Delete |
+| `cycle_emphasis` | Emphasis: {emphasis} |
+| `theme_none` | Theme not captured |
+| `cycle_here` | You are here |
+| `not_captured_heading` | Not captured yet |
+| `not_captured_none` | The program file has no gaps listed. |
+| `coach_program_heading` | Program |
+| `coach_program_text` | {loaded} of {all} weeks are loaded. |
+| `coach_starts_heading` | Start dates |
+| `coach_starts_text` | Each athlete's first week starts on a Monday. |
+| `coach_starts_save` | Save start dates |
+| `coach_notes_heading` | Voice notes |
+| `coach_notes_none` | No voice notes yet. |
+| `coach_cycle_heading` | Cycle notes |
+| `coach_cycle_text` | A note here replaces the program's note for that cycle. Leave it empty to use the program's. |
+| `coach_cycle_save` | Save cycle notes |
+| `rec_heading` | Record a voice note |
+| `rec_text` | Pick the lift, give the note a title, then record. It plays on each session that has that lift. |
+| `rec_lift` | Lift |
+| `rec_title` | Title |
+| `rec_limit` | Up to {seconds} seconds. Titles up to {chars} characters. |
+| `rec_start` | Record |
+| `rec_stop` | Stop |
+| `rec_listen` | Listen |
+| `rec_save` | Save note |
+| `rec_discard` | Discard |
+| `offline_note` | Offline, as of {date}. Changes are off. |
+| `err_date` | {date} is not a date. |
+| `err_max` | The max was not saved. Check the lift, the weight and the date. |
+| `err_move` | That session cannot move there. Pick a different date. |
+| `err_no_athlete` | That athlete is not here. |
+| `err_no_data` | The program has not loaded yet. |
+| `err_no_lift` | That lift is not in the program. |
+| `err_no_max` | That max is not here. |
+| `err_no_move` | That session has not moved. |
+| `err_no_note` | That voice note is not here. |
+| `err_no_screen` | There is no screen {screen}. |
+| `err_not_coach` | That needs the coach passcode. |
+| `err_not_yours` | That max belongs to another athlete. |
+| `err_note` | The voice note was not saved. Check the title and the length. |
+| `err_offline` | This phone is offline. Changes wait until it is back online. |
+| `err_passcode_empty` | Type the passcode first. |
+| `err_start` | The start date for {name} must be a Monday. |
+| `err_unreachable` | The database did not answer. Check the signal and try again. |
+| `err_bad_passcode` | That passcode was not accepted. |
+| `err_weight` | Type the weight as a whole number of pounds. |
+| `nothing_changed` | Nothing changed. |
+| `page_loading` | Loading… |
+| `page_checking` | Checking the passcode… |
+| `page_start_failed` | The page could not start. |
+| `page_demo` | Demo with made-up data |
+| `page_rec_denied` | The microphone is blocked. Allow it in the browser's settings for this site, then try again. |
+| `page_rec_unsupported` | This browser cannot record. |
+| `page_rec_recording` | Recording |
+| `page_rec_ready` | Ready |
+| `page_rec_saved` | Saved |
+| `page_playing` | Playing |
+| `page_play_failed` | The voice note could not be played. |
+| `page_switch` | Switch athlete |
+| `page_forget` | Forget this phone |
+| `page_home_screen` | To fill the screen, choose Share, then Add to Home Screen. |
+| `page_note_missing` | Fill in the lift and the title first. |
+| `page_save_failed` | The voice note could not be saved. |
+| `page_nav` | Screens |
+| `dow_0` | Mon |
+| `dow_long_0` | Monday |
+| `dow_1` | Tue |
+| `dow_long_1` | Tuesday |
+| `dow_2` | Wed |
+| `dow_long_2` | Wednesday |
+| `dow_3` | Thu |
+| `dow_long_3` | Thursday |
+| `dow_4` | Fri |
+| `dow_long_4` | Friday |
+| `dow_5` | Sat |
+| `dow_long_5` | Saturday |
+| `dow_6` | Sun |
+| `dow_long_6` | Sunday |
+| `month_1` | Jan |
+| `month_2` | Feb |
+| `month_3` | Mar |
+| `month_4` | Apr |
+| `month_5` | May |
+| `month_6` | Jun |
+| `month_7` | Jul |
+| `month_8` | Aug |
+| `month_9` | Sep |
+| `month_10` | Oct |
+| `month_11` | Nov |
+| `month_12` | Dec |
+| `err_coach_only` | That needs the coach passcode. |
+| `err_server` | The database refused the request. Try again. |

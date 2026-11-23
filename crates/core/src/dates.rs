@@ -129,6 +129,9 @@ mod tests {
     fn the_monday_on_or_before_a_wednesday_is_two_days_earlier() {
         let wed = parse("2026-12-02").unwrap();
         assert_eq!(format(monday_on_or_before(wed)), "2026-11-30");
-        assert_eq!(monday_on_or_before(monday_on_or_before(wed)), monday_on_or_before(wed));
+        assert_eq!(
+            monday_on_or_before(monday_on_or_before(wed)),
+            monday_on_or_before(wed)
+        );
     }
 }

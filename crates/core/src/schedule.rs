@@ -39,7 +39,11 @@ impl std::fmt::Debug for Slot<'_> {
     // Short on purpose: the whole cycle hangs off a slot, and a failing test
     // should print where it is, not the program.
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Slot(cycle {}, week {}, {})", self.cycle, self.week, self.day.dow)
+        write!(
+            f,
+            "Slot(cycle {}, week {}, {})",
+            self.cycle, self.week, self.day.dow
+        )
     }
 }
 

@@ -89,7 +89,9 @@ fn choice(value: &str, label: &str) -> Choice {
 // ---- passcode and who ----
 
 pub fn passcode(s: &Strings, error: &str) -> Vec<Panel> {
-    let mut p = Panel::new("passcode", "form").heading(&s.t("passcode_heading")).text(&s.t("passcode_text"));
+    let mut p = Panel::new("passcode", "form")
+        .heading(&s.t("passcode_heading"))
+        .text(&s.t("passcode_text"));
     p.fields = vec![
         Field::new("group", &s.t("passcode_group"), "password", ""),
         Field::new("coach", &s.t("passcode_coach"), "password", ""),
@@ -102,7 +104,9 @@ pub fn passcode(s: &Strings, error: &str) -> Vec<Panel> {
 }
 
 pub fn who(st: &State, data: &Data, s: &Strings) -> Vec<Panel> {
-    let mut p = Panel::new("who", "list").heading(&s.t("who_heading")).text(&s.t("who_text"));
+    let mut p = Panel::new("who", "list")
+        .heading(&s.t("who_heading"))
+        .text(&s.t("who_text"));
     for a in &data.athletes {
         let mut row = Row::new(&format!("athlete-{}", a.id), &a.name);
         row.actions = vec![Action::new("athlete.pick", &a.id.to_string(), &a.name)];
@@ -129,7 +133,10 @@ fn library_row(ctx: &Ctx, id: &str, item: &LibraryItem, dose: Option<&str>) -> R
     match item.kind.as_str() {
         "hold" => {
             if let (Some(sets), Some(secs)) = (item.sets, item.secs) {
-                parts.push(s.f("rx_hold", &[("sets", &sets.to_string()), ("secs", &secs.to_string())]));
+                parts.push(s.f(
+                    "rx_hold",
+                    &[("sets", &sets.to_string()), ("secs", &secs.to_string())],
+                ));
             }
         }
         _ => {
@@ -161,14 +168,24 @@ fn prescription(ctx: &Ctx, block: &Block) -> String {
         parts.push(s.t("rx_amap"));
     } else if block.hold {
         if let (Some(sets), Some(secs)) = (block.sets, block.secs) {
-            parts.push(s.f("rx_hold", &[("sets", &sets.to_string()), ("secs", &secs.to_string())]));
+            parts.push(s.f(
+                "rx_hold",
+                &[("sets", &sets.to_string()), ("secs", &secs.to_string())],
+            ));
         }
     } else if let (Some(sets), Some(reps)) = (block.sets, block.reps) {
-        let key = if block.each_side { "rx_each_side" } else { "rx_sets_reps" };
+        let key = if block.each_side {
+            "rx_each_side"
+        } else {
+            "rx_sets_reps"
+        };
         parts.push(s.f(key, &[("sets", &sets.to_string()), ("reps", &reps.to_string())]));
     }
     if let Some(p) = &block.pct {
-        parts.push(s.f("rx_pct", &[("last", &p.last.to_string()), ("pct", &p.pct.to_string())]));
+        parts.push(s.f(
+            "rx_pct",
+            &[("last", &p.last.to_string()), ("pct", &p.pct.to_string())],
+        ));
     }
     parts.join(" · ")
 }
@@ -187,11 +204,18 @@ fn lift_row(ctx: &Ctx, cycle: &Cycle, block: &Block, id: &str, date: i64) -> Row
             Some(found) => {
                 w.label = s.f(
                     "ww_line",
-                    &[("last", &p.last.to_string()), ("weight", &found.weight.to_string())],
+                    &[
+                        ("last", &p.last.to_string()),
+                        ("weight", &found.weight.to_string()),
+                    ],
                 );
                 w.detail = s.f(
                     "ww_basis",
-                    &[("pct", &p.pct.to_string()), ("lift", &of_name), ("max", &found.max.to_string())],
+                    &[
+                        ("pct", &p.pct.to_string()),
+                        ("lift", &of_name),
+                        ("max", &found.max.to_string()),
+                    ],
                 );
             }
             None => {
@@ -230,8 +254,15 @@ fn note_row(ctx: &Ctx, n: &crate::data::NoteRec, id: &str) -> Row {
     let s = ctx.s;
     let mut r = Row::new(id, &n.title);
     r.tag = s.t("tag_voice_note");
-    r.detail = s.f("note_detail", &[("length", &notes::length(n.seconds)), ("date", &n.date)]);
-    r.actions = vec![Action::new("note.play", &n.id.to_string(), &s.f("note_play", &[("title", &n.title)]))];
+    r.detail = s.f(
+        "note_detail",
+        &[("length", &notes::length(n.seconds)), ("date", &n.date)],
+    );
+    r.actions = vec![Action::new(
+        "note.play",
+        &n.id.to_string(),
+        &s.f("note_play", &[("title", &n.title)]),
+    )];
     r
 }
 
@@ -253,7 +284,10 @@ fn block_row(ctx: &Ctx, cycle: &Cycle, block: &Block, id: &str, date: i64) -> Ro
         }
         _ => {
             let mut r = Row::new(id, &s.t("tag_coach_note"));
-            r.note = ctx.data.program.note_text(cycle, block.note.as_deref().unwrap_or_default());
+            r.note = ctx
+                .data
+                .program
+                .note_text(cycle, block.note.as_deref().unwrap_or_default());
             r
         }
     }
@@ -307,11 +341,14 @@ pub fn day_panels(ctx: &Ctx, date: i64) -> Vec<Panel> {
                     p.marker = s.f("moved_from", &[("date", &ctx.short_date(*from))]);
                 }
                 for (i, block) in slot.day.blocks.iter().enumerate() {
-                    p.rows.push(block_row(ctx, slot.cycle_ref, block, &format!("{id}-b{i}"), date));
+                    p.rows
+                        .push(block_row(ctx, slot.cycle_ref, block, &format!("{id}-b{i}"), date));
                 }
-                p.actions.push(Action::new("move.start", &key_value(&key), &s.t("move_button")));
+                p.actions
+                    .push(Action::new("move.start", &key_value(&key), &s.t("move_button")));
                 if moved_from.is_some() {
-                    p.actions.push(Action::new("move.undo", &key_value(&key), &s.t("move_undo")));
+                    p.actions
+                        .push(Action::new("move.undo", &key_value(&key), &s.t("move_undo")));
                 }
                 panels.push(p);
                 if ctx.st.moving.as_ref() == Some(&key) {
@@ -327,8 +364,10 @@ pub fn day_panels(ctx: &Ctx, date: i64) -> Vec<Panel> {
                 .heading(&ctx.kind_label(&slot.day.kind));
                 p.text = where_text(ctx, slot);
                 p.marker = s.f("moved_to", &[("date", &ctx.short_date(*to))]);
-                p.actions.push(Action::new("day.show", &dates::format(*to), &s.t("moved_go")));
-                p.actions.push(Action::new("move.undo", &key_value(&key), &s.t("move_undo")));
+                p.actions
+                    .push(Action::new("day.show", &dates::format(*to), &s.t("moved_go")));
+                p.actions
+                    .push(Action::new("move.undo", &key_value(&key), &s.t("move_undo")));
                 panels.push(p);
             }
         }
@@ -338,7 +377,10 @@ pub fn day_panels(ctx: &Ctx, date: i64) -> Vec<Panel> {
             Empty::BeforeStart(start) => s.f("empty_before", &[("date", &long_date(s, *start))]),
             Empty::NotLoaded { cycle, week } => s.f(
                 "empty_not_loaded",
-                &[("cycle", &(cycle + 1).to_string()), ("week", &(week + 1).to_string())],
+                &[
+                    ("cycle", &(cycle + 1).to_string()),
+                    ("week", &(week + 1).to_string()),
+                ],
             ),
             Empty::Rest => s.t("empty_rest"),
         };
@@ -354,24 +396,22 @@ pub fn day_panels(ctx: &Ctx, date: i64) -> Vec<Panel> {
 
 fn move_form(ctx: &Ctx, key: &MoveKey, date: i64) -> Panel {
     let s = ctx.s;
-    let mut p = Panel::new("move", "form").heading(&s.t("move_heading")).text(&s.t("move_text"));
+    let mut p = Panel::new("move", "form")
+        .heading(&s.t("move_heading"))
+        .text(&s.t("move_text"));
     p.fields = vec![Field::new("to", &s.t("move_to"), "date", &dates::format(date))];
     let v = key_value(key);
     p.actions.push(Action::new("move.save", &v, &s.t("move_save")));
     if ctx.coach() {
-        p.actions.push(Action::new("move.save_all", &v, &s.t("move_save_all")));
+        p.actions
+            .push(Action::new("move.save_all", &v, &s.t("move_save_all")));
     }
     p.actions.push(Action::new("move.cancel", "", &s.t("cancel")));
     p
 }
 
 pub fn today(ctx: &Ctx) -> (String, Vec<Panel>) {
-    let date = ctx
-        .st
-        .day
-        .as_deref()
-        .and_then(dates::parse)
-        .unwrap_or(ctx.today);
+    let date = ctx.st.day.as_deref().and_then(dates::parse).unwrap_or(ctx.today);
     let mut title = long_date(ctx.s, date);
     if date == ctx.today {
         title = ctx.s.f("today_title", &[("date", &title)]);
@@ -406,7 +446,10 @@ pub fn week(ctx: &Ctx) -> (String, Vec<Panel>) {
             .unwrap_or_else(|| s.f("cycle_n", &[("n", &(cycle + 1).to_string())]));
         s.f(
             "week_place",
-            &[("cycle", &name), ("week", &(number % CYCLE_WEEKS + 1).to_string())],
+            &[
+                ("cycle", &name),
+                ("week", &(number % CYCLE_WEEKS + 1).to_string()),
+            ],
         )
     };
     let title = s.f(
@@ -501,7 +544,9 @@ fn lift_choices(ctx: &Ctx) -> Vec<Choice> {
 
 pub fn recorder(ctx: &Ctx, lift: &str) -> Panel {
     let s = ctx.s;
-    let mut p = Panel::new("recorder", "recorder").heading(&s.t("rec_heading")).text(&s.t("rec_text"));
+    let mut p = Panel::new("recorder", "recorder")
+        .heading(&s.t("rec_heading"))
+        .text(&s.t("rec_text"));
     p.limit = Some(MAX_NOTE_SECONDS);
     p.lifts = lift_choices(ctx);
     p.fields = vec![
@@ -515,7 +560,13 @@ pub fn recorder(ctx: &Ctx, lift: &str) -> Panel {
         Action::new("rec.save", "", &s.t("rec_save")),
         Action::new("rec.discard", "", &s.t("rec_discard")),
     ];
-    p.marker = s.f("rec_limit", &[("seconds", &MAX_NOTE_SECONDS.to_string()), ("chars", &MAX_TITLE.to_string())]);
+    p.marker = s.f(
+        "rec_limit",
+        &[
+            ("seconds", &MAX_NOTE_SECONDS.to_string()),
+            ("chars", &MAX_TITLE.to_string()),
+        ],
+    );
     p
 }
 
@@ -526,13 +577,19 @@ pub fn lift(ctx: &Ctx, lift: &str) -> (String, Vec<Panel>) {
     let max_lift = ctx.data.program.max_lift(lift);
     let mut mine = Panel::new("lift-max", "list").heading(&s.t("lift_max_heading"));
     if max_lift != lift {
-        mine.text = s.f("lift_max_from", &[("lift", &ctx.data.program.lift_name(max_lift))]);
+        mine.text = s.f(
+            "lift_max_from",
+            &[("lift", &ctx.data.program.lift_name(max_lift))],
+        );
     }
     match maxes::current_max(ctx.data, ctx.athlete.id, max_lift, ctx.today) {
         Some(m) => {
             mine.rows.push(Row::new(
                 "lift-max-now",
-                &s.f("max_line", &[("weight", &m.weight.to_string()), ("date", &m.date)]),
+                &s.f(
+                    "max_line",
+                    &[("weight", &m.weight.to_string()), ("date", &m.date)],
+                ),
             ));
         }
         None => mine.text = format!("{} {}", mine.text, s.t("max_none")).trim().to_string(),
@@ -543,7 +600,8 @@ pub fn lift(ctx: &Ctx, lift: &str) -> (String, Vec<Panel>) {
     for n in notes::notes_for(ctx.data, lift) {
         let mut r = note_row(ctx, n, &format!("note-{}", n.id));
         if ctx.coach() {
-            r.actions.push(Action::new("note.delete", &n.id.to_string(), &s.t("note_delete")));
+            r.actions
+                .push(Action::new("note.delete", &n.id.to_string(), &s.t("note_delete")));
         }
         voice.rows.push(r);
     }
@@ -569,7 +627,10 @@ pub fn maxes_screen(ctx: &Ctx) -> (String, Vec<Panel>) {
             let mut row = Row::new(&format!("max-{lift}-{}", a.id), &a.name);
             match maxes::current_max(ctx.data, a.id, lift, ctx.today) {
                 Some(m) => {
-                    row.detail = s.f("max_line", &[("weight", &m.weight.to_string()), ("date", &m.date)]);
+                    row.detail = s.f(
+                        "max_line",
+                        &[("weight", &m.weight.to_string()), ("date", &m.date)],
+                    );
                 }
                 None => row.detail = s.t("max_none_short"),
             }
@@ -577,7 +638,13 @@ pub fn maxes_screen(ctx: &Ctx) -> (String, Vec<Panel>) {
                 row.marker = s.t("who_current");
             }
             for m in hist {
-                let mut h = Row::new(&format!("maxrec-{}", m.id), &s.f("max_line", &[("weight", &m.weight.to_string()), ("date", &m.date)]));
+                let mut h = Row::new(
+                    &format!("maxrec-{}", m.id),
+                    &s.f(
+                        "max_line",
+                        &[("weight", &m.weight.to_string()), ("date", &m.date)],
+                    ),
+                );
                 if a.id == ctx.athlete.id || ctx.coach() {
                     h.actions = vec![Action::new("max.delete", &m.id.to_string(), &s.t("max_delete"))];
                 }
@@ -587,13 +654,28 @@ pub fn maxes_screen(ctx: &Ctx) -> (String, Vec<Panel>) {
         }
         panels.push(p);
     }
-    let mut form = Panel::new("max-form", "form").heading(&s.t("max_form_heading")).text(&s.t("max_form_text"));
-    let first = ctx.data.program.max_lifts().first().map(|x| x.to_string()).unwrap_or_default();
+    let mut form = Panel::new("max-form", "form")
+        .heading(&s.t("max_form_heading"))
+        .text(&s.t("max_form_text"));
+    let first = ctx
+        .data
+        .program
+        .max_lifts()
+        .first()
+        .map(|x| x.to_string())
+        .unwrap_or_default();
     let chosen = ctx.st.prefill.clone().unwrap_or(first);
-    form.fields = vec![Field::new("lift", &s.t("max_lift"), "select", &chosen).with_choices(max_choices(ctx))];
+    form.fields =
+        vec![Field::new("lift", &s.t("max_lift"), "select", &chosen).with_choices(max_choices(ctx))];
     if ctx.coach() {
         form.fields.push(
-            Field::new("athlete", &s.t("max_athlete"), "select", &ctx.athlete.id.to_string()).with_choices(
+            Field::new(
+                "athlete",
+                &s.t("max_athlete"),
+                "select",
+                &ctx.athlete.id.to_string(),
+            )
+            .with_choices(
                 ctx.data
                     .athletes
                     .iter()
@@ -602,8 +684,14 @@ pub fn maxes_screen(ctx: &Ctx) -> (String, Vec<Panel>) {
             ),
         );
     }
-    form.fields.push(Field::new("weight", &s.t("max_weight"), "number", ""));
-    form.fields.push(Field::new("date", &s.t("max_date"), "date", &dates::format(ctx.today)));
+    form.fields
+        .push(Field::new("weight", &s.t("max_weight"), "number", ""));
+    form.fields.push(Field::new(
+        "date",
+        &s.t("max_date"),
+        "date",
+        &dates::format(ctx.today),
+    ));
     form.actions = vec![Action::new("max.add", "", &s.t("max_save"))];
     panels.insert(0, form);
     (s.t("title_maxes"), panels)
@@ -628,7 +716,11 @@ pub fn cycles(ctx: &Ctx) -> (String, Vec<Panel>) {
                 &s.f("week_n", &[("week", &(w + 1).to_string())]),
             );
             row.detail = theme.unwrap_or_else(|| s.t("theme_none"));
-            row.tag = if loaded { s.t("tag_loaded") } else { s.t("tag_not_loaded") };
+            row.tag = if loaded {
+                s.t("tag_loaded")
+            } else {
+                s.t("tag_not_loaded")
+            };
             if here >= 0 && here == (c as i64) * CYCLE_WEEKS + w as i64 {
                 row.marker = s.t("cycle_here");
             }
@@ -672,13 +764,21 @@ pub fn coach(ctx: &Ctx) -> (String, Vec<Panel>) {
         .iter()
         .map(|c| c.weeks.iter().filter(|w| !w.missing).count())
         .sum();
-    panels.push(Panel::new("coach-program", "text").heading(&s.t("coach_program_heading")).text(&s.f(
-        "coach_program_text",
-        &[("loaded", &loaded.to_string()), ("all", &all.to_string())],
-    )));
-    let mut starts = Panel::new("coach-starts", "form").heading(&s.t("coach_starts_heading")).text(&s.t("coach_starts_text"));
+    panels.push(
+        Panel::new("coach-program", "text")
+            .heading(&s.t("coach_program_heading"))
+            .text(&s.f(
+                "coach_program_text",
+                &[("loaded", &loaded.to_string()), ("all", &all.to_string())],
+            )),
+    );
+    let mut starts = Panel::new("coach-starts", "form")
+        .heading(&s.t("coach_starts_heading"))
+        .text(&s.t("coach_starts_text"));
     for a in &ctx.data.athletes {
-        starts.fields.push(Field::new(&format!("start_{}", a.id), &a.name, "date", &a.start));
+        starts
+            .fields
+            .push(Field::new(&format!("start_{}", a.id), &a.name, "date", &a.start));
     }
     starts.actions = vec![Action::new("start.set", "", &s.t("coach_starts_save"))];
     panels.push(starts);
@@ -687,7 +787,8 @@ pub fn coach(ctx: &Ctx) -> (String, Vec<Panel>) {
     for n in &ctx.data.notes {
         let mut r = note_row(ctx, n, &format!("cn-{}", n.id));
         r.label = format!("{} · {}", ctx.data.program.lift_name(&n.lift), n.title);
-        r.actions.push(Action::new("note.delete", &n.id.to_string(), &s.t("note_delete")));
+        r.actions
+            .push(Action::new("note.delete", &n.id.to_string(), &s.t("note_delete")));
         notes_panel.rows.push(r);
     }
     if notes_panel.rows.is_empty() {
@@ -705,7 +806,12 @@ pub fn coach(ctx: &Ctx) -> (String, Vec<Panel>) {
             .find(|n| n.cycle == cycle.id)
             .map(|n| n.text.clone())
             .unwrap_or_default();
-        cn.fields.push(Field::new(&format!("cycle_{}", cycle.id), &cycle.name, "text", &current));
+        cn.fields.push(Field::new(
+            &format!("cycle_{}", cycle.id),
+            &cycle.name,
+            "text",
+            &current,
+        ));
     }
     cn.actions = vec![Action::new("cyclenote.set", "", &s.t("coach_cycle_save"))];
     panels.push(cn);

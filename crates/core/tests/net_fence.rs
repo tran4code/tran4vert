@@ -116,7 +116,10 @@ fn csp_problems(csp: &str, url: &str) -> Vec<String> {
 
 #[test]
 fn web_net_holds_the_config_and_the_client_and_nothing_else() {
-    let net: Vec<String> = files_under(&web().join("net")).iter().map(|p| relative(p)).collect();
+    let net: Vec<String> = files_under(&web().join("net"))
+        .iter()
+        .map(|p| relative(p))
+        .collect();
     assert_eq!(net, vec!["net/client.js", "net/config.js"], "files in web/net/");
 }
 
@@ -140,7 +143,11 @@ fn only_the_config_names_an_address() {
             }
         }
     }
-    assert!(found.is_empty(), "an address outside web/net/config.js:\n{}", found.join("\n"));
+    assert!(
+        found.is_empty(),
+        "an address outside web/net/config.js:\n{}",
+        found.join("\n")
+    );
 }
 
 #[test]
@@ -162,7 +169,9 @@ fn only_the_client_reads_the_config_and_only_it_sends_requests_off_the_page() {
         while let Some(at) = text[from..].find("fetch(") {
             let start = from + at + "fetch(".len();
             if !text[start..].starts_with('"') {
-                found.push(format!("{name} calls fetch with something other than a file name"));
+                found.push(format!(
+                    "{name} calls fetch with something other than a file name"
+                ));
             }
             from = start;
         }
@@ -180,7 +189,12 @@ fn every_page_connects_only_to_itself_and_the_configured_address() {
             let text = fs::read_to_string(&path).unwrap();
             let csp = csp_of(&text).unwrap_or_else(|| panic!("{}: no policy", relative(&path)));
             let problems = csp_problems(&csp, &url);
-            assert!(problems.is_empty(), "{}: {}", relative(&path), problems.join("; "));
+            assert!(
+                problems.is_empty(),
+                "{}: {}",
+                relative(&path),
+                problems.join("; ")
+            );
         }
     }
     assert!(pages > 0, "no page found");
@@ -196,7 +210,10 @@ fn the_address_is_https_and_comes_with_its_key_or_both_are_empty() {
         assert!(!url.ends_with('/'), "no trailing slash on the address: {url}");
         assert!(!url.contains(' '), "the address has a space");
         assert!(!key.is_empty(), "config.js has an address and no key");
-        assert!(!key.contains("service_role"), "the key must be the publishable one");
+        assert!(
+            !key.contains("service_role"),
+            "the key must be the publishable one"
+        );
     }
 }
 
@@ -213,23 +230,37 @@ fn the_policy_reader_accepts_the_configured_address_and_nothing_more() {
 
 #[test]
 fn the_policy_reader_catches_an_extra_a_missing_or_a_misplaced_address() {
-    let extra = GOOD.replace("https://abc.supabase.co", "https://abc.supabase.co https://evil.example");
+    let extra = GOOD.replace(
+        "https://abc.supabase.co",
+        "https://abc.supabase.co https://evil.example",
+    );
     assert!(!csp_problems(&extra, "https://abc.supabase.co").is_empty());
     assert!(!csp_problems(GOOD, "https://other.supabase.co").is_empty());
     // An address in the config and none in the policy.
-    assert!(!csp_problems("connect-src 'self'; media-src blob:; manifest-src 'self'", "https://abc.supabase.co").is_empty());
+    assert!(!csp_problems(
+        "connect-src 'self'; media-src blob:; manifest-src 'self'",
+        "https://abc.supabase.co"
+    )
+    .is_empty());
     // An address in the policy and none in the config.
     assert!(!csp_problems(GOOD, "").is_empty());
     let img = format!("{GOOD}; font-src https://fonts.example");
     assert!(!csp_problems(&img, "https://abc.supabase.co").is_empty());
-    assert!(!csp_problems(&GOOD.replace("media-src blob:", "media-src blob: https://m.example"), "https://abc.supabase.co").is_empty());
+    assert!(!csp_problems(
+        &GOOD.replace("media-src blob:", "media-src blob: https://m.example"),
+        "https://abc.supabase.co"
+    )
+    .is_empty());
     assert!(!csp_problems("default-src 'self'", "").is_empty());
 }
 
 #[test]
 fn the_config_reader_reads_both_values() {
     let text = "export const config = {\n  url: \"https://x.supabase.co\",\n  key: \"abc\",\n};\n";
-    assert_eq!(config_value(text, "url").as_deref(), Some("https://x.supabase.co"));
+    assert_eq!(
+        config_value(text, "url").as_deref(),
+        Some("https://x.supabase.co")
+    );
     assert_eq!(config_value(text, "key").as_deref(), Some("abc"));
     assert_eq!(config_value(text, "other"), None);
 }

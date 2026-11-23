@@ -118,7 +118,11 @@ fn render(st: State, hints: Vec<Hint>, requests: Vec<Request>, message: String) 
     let (title, panels, nav, header) = match (&data, &athlete) {
         (None, _) => {
             screen = "passcode".into();
-            let err = if st.failure.is_empty() { String::new() } else { s.t(&st.failure) };
+            let err = if st.failure.is_empty() {
+                String::new()
+            } else {
+                s.t(&st.failure)
+            };
             (
                 s.t("title_passcode"),
                 view::passcode(&s, &err),
@@ -128,7 +132,12 @@ fn render(st: State, hints: Vec<Hint>, requests: Vec<Request>, message: String) 
         }
         (Some(d), None) => {
             screen = "who".into();
-            (s.t("title_who"), view::who(&st, d, &s), Vec::new(), view::header(None, &st, &s))
+            (
+                s.t("title_who"),
+                view::who(&st, d, &s),
+                Vec::new(),
+                view::header(None, &st, &s),
+            )
         }
         (Some(d), Some(a)) => {
             let ctx = Ctx {
@@ -256,7 +265,11 @@ impl Form {
             .and_then(Value::as_object)
             .cloned()
             .unwrap_or_default();
-        let value = v.get("value").and_then(Value::as_str).unwrap_or_default().to_string();
+        let value = v
+            .get("value")
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .to_string();
         Ok(Form { value, fields })
     }
 
@@ -419,7 +432,8 @@ fn step(mut st: State, name: &str, value: &str) -> Out {
         "athlete.switch" => st.screen = "who".into(),
         "screen.show" => {
             let coach = need_data(&st)?.is_coach();
-            let known = ["today", "week", "maxes", "cycles", "who"].contains(&value) || (value == "coach" && coach);
+            let known =
+                ["today", "week", "maxes", "cycles", "who"].contains(&value) || (value == "coach" && coach);
             if !known {
                 return Err(s.f("err_no_screen", &[("screen", value)]));
             }
@@ -476,7 +490,11 @@ fn step(mut st: State, name: &str, value: &str) -> Out {
         "max.delete" => {
             let data = need_data(&st)?;
             let id = number(value, "err_no_max", &s)?;
-            let rec = data.maxes.iter().find(|m| m.id == id).ok_or_else(|| s.t("err_no_max"))?;
+            let rec = data
+                .maxes
+                .iter()
+                .find(|m| m.id == id)
+                .ok_or_else(|| s.t("err_no_max"))?;
             if !data.is_coach() && Some(rec.athlete) != st.athlete {
                 return Err(s.t("err_not_yours"));
             }
@@ -601,7 +619,10 @@ fn step(mut st: State, name: &str, value: &str) -> Out {
                     .map(|n| n.text.clone())
                     .unwrap_or_default();
                 if wanted != current {
-                    requests.push(Request::new("set_cycle_note", json!({"cycle": c.id, "text": wanted})));
+                    requests.push(Request::new(
+                        "set_cycle_note",
+                        json!({"cycle": c.id, "text": wanted}),
+                    ));
                 }
             }
             if requests.is_empty() {

@@ -292,5 +292,47 @@
     "find": "u32::try_from(ms / 1000)",
     "replace": "u32::try_from(ms)",
     "test": "the_recorders_timer_shows_whole_seconds_as_minutes_and_seconds"
+  },
+  {
+    "name": "browser storage appears outside the store",
+    "file": "web/app.js",
+    "find": "const el = (id) => document.getElementById(id);",
+    "replace": "const el = (id) => document.getElementById(id); // localStorage",
+    "test": "only_the_save_store_names_browser_storage"
+  },
+  {
+    "name": "a second address in the policy",
+    "file": "web/index.html",
+    "find": "connect-src 'self';",
+    "replace": "connect-src 'self' https://evil.example;",
+    "test": "every_page_connects_only_to_itself_and_the_configured_address"
+  },
+  {
+    "name": "a page loads media from an address",
+    "file": "web/index.html",
+    "find": "media-src blob:;",
+    "replace": "media-src blob: https://m.example;",
+    "test": "every_page_connects_only_to_itself_and_the_configured_address"
+  },
+  {
+    "name": "the app reads the database config",
+    "file": "web/app.js",
+    "find": "import * as store from \"./save/store.js\";",
+    "replace": "import * as store from \"./save/store.js\";\nimport { config } from \"./net/config.js\";",
+    "test": "only_the_client_reads_the_config_and_only_it_sends_requests_off_the_page"
+  },
+  {
+    "name": "an address in the style sheet",
+    "file": "web/style.css",
+    "find": "  --tap: 44px;",
+    "replace": "  --tap: 44px; /* https://x.example */",
+    "test": "only_the_config_names_an_address"
+  },
+  {
+    "name": "a string nothing uses",
+    "file": "data/strings.json",
+    "find": "\"cancel\": \"Cancel\",",
+    "replace": "\"cancel\": \"Cancel\",\n  \"stray\": \"Nothing uses this.\",",
+    "test": "every_string_in_the_strings_file_is_used_by_the_core_or_the_page"
   }
 ]
