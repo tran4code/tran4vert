@@ -1,0 +1,15 @@
+{
+  "name": "Tran4Vert",
+  "short_name": "Tran4Vert",
+  "display": "standalone",
+  "background_color": "#15181c",
+  "theme_color": "#15181c",
+  "start_url": "./index.html",
+  "icons": [
+    {
+      "src": "apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ]
+}

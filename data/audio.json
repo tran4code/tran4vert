@@ -1,0 +1,7 @@
+{
+  "_about": "Recorder settings (D3). mimes lists what to try, in order, until the browser accepts one; iPhone Safari records MPEG-4 audio.",
+  "mimes": ["audio/mp4", "audio/webm;codecs=opus", "audio/webm"],
+  "bits_per_second": 32000,
+  "tick_ms": 250,
+  "ms_per_second": 1000
+}

@@ -1,0 +1,8 @@
+{
+  "_about": "Read by scripts/build.sh to write the web app manifest, so the name and colours have one home (kits/mobile M3).",
+  "name": "Tran4Vert",
+  "short_name": "Tran4Vert",
+  "display": "standalone",
+  "background_color": "#15181c",
+  "theme_color": "#15181c"
+}

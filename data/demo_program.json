@@ -1,0 +1,411 @@
+{
+ "_about": "Made-up sample program for tests and the demo. Same format as private/program/program.json; every name, note and number here is invented.",
+ "units": "lb",
+ "blocks_legend": {
+  "ref": "a reusable block from the library, by id",
+  "note": "free text for the day",
+  "lift": "sets and reps of a lift",
+  "hold": "sets and seconds",
+  "text": "a one-line prescription"
+ },
+ "lifts": {
+  "anvil_squat": {
+   "name": "Anvil Squat",
+   "tracks_max": true,
+   "category": "strength"
+  },
+  "rope_clean": {
+   "name": "Rope Clean",
+   "tracks_max": true,
+   "category": "power"
+  },
+  "rope_hang_clean": {
+   "name": "Hang Rope Clean",
+   "max_from": "rope_clean",
+   "category": "power"
+  },
+  "stone_press": {
+   "name": "Stone Press",
+   "tracks_max": true,
+   "category": "accessory"
+  },
+  "kettle_hinge": {
+   "name": "Kettle Hinge",
+   "tracks_max": true,
+   "category": "strength"
+  },
+  "kettle_single": {
+   "name": "Single Kettle Hinge",
+   "max_from": "kettle_hinge",
+   "category": "accessory"
+  },
+  "river_hold": {
+   "name": "River Hold",
+   "category": "calf"
+  },
+  "lantern_drop": {
+   "name": "Lantern Drop",
+   "category": "accessory"
+  },
+  "pillar_raise": {
+   "name": "Pillar Raise",
+   "category": "calf"
+  }
+ },
+ "maxes_from_pdf": {
+  "_note": "invented numbers that must never reach the page",
+  "sample": {
+   "anvil_squat": 999
+  }
+ },
+ "library": {
+  "check_in": {
+   "name": "Check-in",
+   "kind": "checkin",
+   "items": [
+    "Left knee",
+    "Right knee"
+   ]
+  },
+  "wall_hold": {
+   "name": "Wall hold",
+   "kind": "hold",
+   "sets": 3,
+   "secs": 30
+  },
+  "wake_up": {
+   "name": "Wake-up circuit",
+   "kind": "circuit",
+   "rounds": 2,
+   "dose": "10 each",
+   "items": [
+    "Cat cow",
+    "Bird dog",
+    "Dead bug"
+   ]
+  },
+  "wind_down": {
+   "name": "Wind-down",
+   "kind": "circuit",
+   "dose": "1 minute each",
+   "items": [
+    "Breathing",
+    "Hamstring stretch"
+   ]
+  }
+ },
+ "notes": {
+  "gentle_start": "Start light and add weight if the bar moves fast.",
+  "hold_note": "Hold still. Stop if a joint hurts.",
+  "walk_note": "Walk for twenty easy minutes."
+ },
+ "cycles": [
+  {
+   "id": "c1",
+   "name": "Cycle One",
+   "original_start": "2024-07-01",
+   "emphasis": "Base strength",
+   "week_themes": [
+    "Learn the lifts",
+    "Add weight",
+    "Hard week",
+    "Ease off"
+   ],
+   "cycle_note": "Work through the weeks in order.",
+   "weeks": [
+    {
+     "week": 1,
+     "days": [
+      {
+       "dow": "mon",
+       "kind": "jump",
+       "original_date": "2024-07-01",
+       "blocks": [
+        {
+         "ref": "wake_up"
+        },
+        {
+         "note": "@gentle_start"
+        },
+        {
+         "lift": "rope_clean",
+         "sets": 4,
+         "reps": 3,
+         "pct": {
+          "last": 3,
+          "pct": 75,
+          "of": "rope_clean"
+         },
+         "note": "Fast feet."
+        },
+        {
+         "lift": "rope_hang_clean",
+         "sets": 3,
+         "reps": 2,
+         "pct": {
+          "last": 2,
+          "pct": 60,
+          "of": "rope_hang_clean"
+         },
+         "note": "Stay tall."
+        }
+       ]
+      },
+      {
+       "dow": "tue",
+       "kind": "lift",
+       "original_date": "2024-07-02",
+       "blocks": [
+        {
+         "ref": "wake_up"
+        },
+        {
+         "lift": "anvil_squat",
+         "sets": 5,
+         "reps": 3,
+         "pct": {
+          "last": 2,
+          "pct": 75,
+          "of": "anvil_squat"
+         },
+         "note": "Slow down, fast up."
+        },
+        {
+         "lift": "stone_press",
+         "sets": 3,
+         "reps": 8,
+         "each_side": true,
+         "note": "Keep ribs down."
+        },
+        {
+         "lift": "kettle_single",
+         "sets": 3,
+         "reps": 6,
+         "each_side": true,
+         "pct": {
+          "last": 1,
+          "pct": 65,
+          "of": "kettle_single"
+         },
+         "note": "Hips back."
+        },
+        {
+         "lift": "pillar_raise",
+         "sets": 3,
+         "reps": 12,
+         "note": "Pause at the top."
+        }
+       ]
+      },
+      {
+       "dow": "wed",
+       "kind": "general",
+       "original_date": "2024-07-03",
+       "blocks": [
+        {
+         "ref": "wall_hold",
+         "dose": "2 sets of 20 seconds"
+        },
+        {
+         "text": "Easy bike",
+         "detail": "Twenty minutes, easy."
+        },
+        {
+         "note": "@walk_note"
+        }
+       ]
+      },
+      {
+       "dow": "thu",
+       "kind": "jump",
+       "original_date": "2024-07-04",
+       "blocks": [
+        {
+         "ref": "wake_up"
+        },
+        {
+         "ref": "check_in"
+        },
+        {
+         "lift": "lantern_drop",
+         "sets": 3,
+         "reps": 5,
+         "note": "Land quietly."
+        }
+       ]
+      },
+      {
+       "dow": "fri",
+       "kind": "lift",
+       "original_date": "2024-07-05",
+       "blocks": [
+        {
+         "ref": "wake_up"
+        },
+        {
+         "lift": "anvil_squat",
+         "amap": true,
+         "note": "As many clean reps as you can."
+        },
+        {
+         "lift": "river_hold",
+         "hold": true,
+         "sets": 3,
+         "secs": 20
+        }
+       ]
+      },
+      {
+       "dow": "sat",
+       "kind": "iso",
+       "original_date": "2024-07-06",
+       "blocks": [
+        {
+         "ref": "wall_hold"
+        },
+        {
+         "note": "@hold_note"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "week": 2,
+     "days": [
+      {
+       "dow": "mon",
+       "kind": "jump",
+       "original_date": "2024-07-08",
+       "blocks": [
+        {
+         "ref": "wake_up"
+        },
+        {
+         "lift": "rope_clean",
+         "sets": 4,
+         "reps": 3,
+         "pct": {
+          "last": 3,
+          "pct": 110,
+          "of": "rope_clean"
+         },
+         "note": "Fast feet."
+        }
+       ]
+      },
+      {
+       "dow": "tue",
+       "kind": "lift",
+       "original_date": "2024-07-09",
+       "blocks": [
+        {
+         "ref": "wake_up"
+        },
+        {
+         "lift": "anvil_squat",
+         "sets": 1,
+         "reps": 5,
+         "test": "5RM",
+         "note": "Work up to one hard set."
+        },
+        {
+         "ref": "wind_down"
+        }
+       ]
+      },
+      {
+       "dow": "wed",
+       "kind": "general",
+       "original_date": "2024-07-10",
+       "blocks": [
+        {
+         "note": "@cycle_note"
+        },
+        {
+         "ref": "wind_down"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "week": 3,
+     "missing": true
+    },
+    {
+     "week": 4,
+     "missing": true
+    }
+   ]
+  },
+  {
+   "id": "c2",
+   "name": "Cycle Two",
+   "original_start": "2024-07-29",
+   "emphasis": "Speed",
+   "week_themes": [
+    "Quick feet",
+    null,
+    null,
+    null
+   ],
+   "cycle_note": "Keep every rep fast.",
+   "weeks": [
+    {
+     "week": 1,
+     "days": [
+      {
+       "dow": "mon",
+       "kind": "lift",
+       "original_date": "2024-07-29",
+       "blocks": [
+        {
+         "ref": "wake_up"
+        },
+        {
+         "lift": "stone_press",
+         "sets": 3,
+         "reps": 5,
+         "pct": {
+          "last": 2,
+          "pct": 70,
+          "of": "kettle_hinge"
+         },
+         "note": "Presses use the hinge max for now."
+        }
+       ]
+      },
+      {
+       "dow": "tue",
+       "kind": "general",
+       "original_date": "2024-07-30",
+       "blocks": [
+        {
+         "ref": "wind_down"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "week": 2,
+     "missing": true
+    },
+    {
+     "week": 3,
+     "missing": true
+    },
+    {
+     "week": 4,
+     "missing": true
+    }
+   ]
+  }
+ ],
+ "not_captured": [
+  "Cycle One weeks three and four are not typed in yet.",
+  "Cycle Two weeks two to four are not typed in yet.",
+  "Later cycles are not typed in yet."
+ ]
+}

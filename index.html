@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <!-- Reference default plus two changes (BUILDER-SPEC.md): connect-src names the one
+       database origin in web/net/config.js (none while the page runs as a demo),
+       media-src and img-src blob: let a voice note play and a picture show, and manifest-src 'self' lets the phone
+       read the manifest. A meta policy cannot stop data leaving by navigation, so the
+       browser check still watches requests. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; connect-src 'self' https://eqkromjfmsarwtzomtvs.supabase.co; style-src 'self'; img-src 'self' data: blob:; media-src blob:; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta name="theme-color" content="#15181c">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <title>Tran4Vert</title>
+  <link rel="stylesheet" href="style.css?v=a312e01756ac">
+</head>
+<body data-ready="false">
+  <header>
+    <h1 id="title"></h1>
+    <div id="who"></div>
+  </header>
+  <p id="banner" role="status"></p>
+  <main>
+    <div id="panels"></div>
+    <p id="message" role="status"></p>
+    <footer id="footer"></footer>
+  </main>
+  <nav id="nav" aria-label="Screens" hidden></nav>
+  <noscript><p>This page needs JavaScript and WebAssembly.</p></noscript>
+  <script type="module" src="app.js?v=a312e01756ac"></script>
+</body>
+</html>
