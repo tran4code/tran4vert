@@ -4,7 +4,7 @@ Stage 9, written by the build agent on 2026-11-23. A fresh session starts from t
 
 ## What this is
 
-A phone web page (opened from a link in Safari, not an app store app) for three friends on the same four-week-cycle jump-training program. An athlete enters a group passcode, taps their name, and sees today's session and the week, with working weights worked out from their own maxes. The coach records voice notes against a lift and can move sessions; a cycles screen shows what is not loaded yet. Static files (GitHub Pages) plus a free Supabase project reached only through passcode-checking functions. Nothing is published, pushed or created on any service.
+A phone web page (opened from a link in Safari, not an app store app) for three friends on the same four-week-cycle jump-training program. An athlete taps their name and then the vertical they want (the coach sets each one), the phone remembers it, and they see today's session and the week, with working weights worked out from their own maxes. The coach has a typed passcode, kept out of sight until "I'm the coach" is tapped, records voice notes against a lift and can move sessions. A cycles screen shows what is not loaded yet. Static files (GitHub Pages) plus a free Supabase project reached only through functions that check the sign-in. The lock is light on purpose (R2.17).
 
 ## Rules that hold it up
 
@@ -19,7 +19,7 @@ A phone web page (opened from a link in Safari, not an app store app) for three 
 | The one other host is the one in `web/net/config.js`, matched to every page's policy; nothing is sent before a passcode | `crates/core/tests/net_fence.rs`; `tests/browser/live_mock.py` |
 | Only `web/save/store.js` names browser storage | `crates/core/tests/storage_fence.rs` |
 | Every string the screens use is in `data/strings.json`, and every string in it is used | `crates/core/tests/screens.rs`, `copy.rs` |
-| The database closes every table to the publishable key and checks the passcode in every function | `supabase/schema.sql`; `tools/remote_check.py` (passed against the live project 2026-11-23) |
+| The database closes every table to the publishable key and checks the sign-in in every function; five wrong goals lock an athlete out; an athlete changes only their own data | `supabase/schema.sql`; `tools/remote_check.py`; `tests/browser/live_mock.py` |
 
 ## Shape of the code
 
@@ -71,6 +71,8 @@ Set `DEVELOPER_DIR=/Library/Developer/CommandLineTools` first if the Xcode licen
 | R2.1 | Accept the Xcode license (`sudo xcodebuild -license accept`) or keep the environment variable |
 | R2.10 | Check voice-note playback on a phone with the live project |
 | R2.13 | Done 2026-11-23: project, schema, passcodes, program loaded. Still yours: confirm the three athletes' start dates (coach screen), friends' maxes are entered by themselves |
+| R2.17 | The sign-in is a name and a tapped goal. Anyone with the link can read the names, and can reach an athlete's data by guessing among sixteen goals, five tries per fifteen minutes. The paid program text is behind the same lock (R1.6). Chosen by the person on 2026-11-23 |
+| R2.18 | Run `supabase/schema.sql` again in the SQL editor, give each athlete their goal with `update athletes set goal = 40 where name = '...'`, and run `tools/remote_check.py`; the new page is not published until then |
 | R2.14 | Read the agent-written strings at the foot of `SECOND-ORDER.md` |
 | R2.16 | Which max the cycle 2 squat percentage refers to |
 

@@ -31,6 +31,8 @@ One row per assumption, surprise or open item. **Kind** is *divergence* (what wa
 | R2.14 | worklist | A list the agent made is not shown to a reader. | The made-up demo names (Sam, Jo, Pat), the weekday and month names, the session kind labels and every other string are agent-written and are listed at the foot of this file. | None changed. The person reads them. | `TONE.md`, `copy.rs` | person |
 | R2.15 | divergence | The week screen picks the current week from the athlete's own start date (PLAN decision 7). | Before the start it shows the first week with "Not started" days rather than a blank, and earlier weeks can be paged to. | Tested in `screens.rs`. | `the_week_screen_runs_monday_to_sunday...` | done |
 | R2.16 | finding | The Cycle 2 front-squat percentage names a max (R1.5). | The core uses the lift named by the block's `of` field and has no rule of its own; the sample program's equivalent line names a different lift to show that. | Question 3 (round 1) stays with the person; changing the answer is a program-file edit, not code. | | person |
+| R2.17 | divergence | Entry is a typed group passcode (BRIEF done-means 1 and 2; DECISIONS: "Group passcode"). | The person asked for tapping instead of typing: each athlete taps their name, then a vertical (40 inches for one, 50 for another). The agent said that a few choices can be guessed and that names must be fetched before anyone signs in; the person chose "Replace the passcode". | Sixteen goals; the coach sets each athlete's; five wrong tries lock that athlete out for fifteen minutes; each wrong try waits half a second; an athlete changes only their own maxes and moves; goals are sent only to the coach; names and ids are public. The page now makes one call on load, for the names, so done-means 1 ("no request until a passcode is submitted") no longer holds as written. The coach keeps a typed passcode behind a button. | `schema.sql`, `screens.rs`, `live_mock.py` | person |
+| R2.18 | worklist | The live database matches the code. | It has the old functions and no goals. | The person re-runs `supabase/schema.sql` (it keeps data), sets each athlete's goal, and runs `tools/remote_check.py`. Publishing waits for that: the new page needs `get_names`. | | person |
 
 ## Strings written by the agent
 
@@ -38,14 +40,11 @@ Each reader-visible string the agent wrote, with its key, for the person to read
 
 | Key | String |
 | --- | --- |
-| `title_passcode` | Enter the passcode |
+| `title_passcode` | Welcome |
 | `title_who` | Who are you? |
 | `title_maxes` | Maxes |
 | `title_cycles` | Cycles |
 | `title_coach` | Coach |
-| `passcode_heading` | Group passcode |
-| `passcode_text` | Type the group passcode. This phone remembers it. |
-| `passcode_group` | Group passcode |
 | `passcode_coach` | Coach passcode |
 | `passcode_enter` | Enter |
 | `who_heading` | Tap your name |
@@ -177,7 +176,7 @@ Each reader-visible string the agent wrote, with its key, for the person to read
 | `err_passcode_empty` | Type a passcode first. |
 | `err_start` | The start date for {name} must be a Monday. |
 | `err_unreachable` | The database did not answer. Check the signal and try again. |
-| `err_bad_passcode` | That passcode was not accepted. |
+| `err_bad_passcode` | That is not it. Try again. |
 | `err_weight` | Type the weight as a whole number of pounds. |
 | `nothing_changed` | Nothing changed. |
 | `page_loading` | Loading… |
@@ -191,7 +190,7 @@ Each reader-visible string the agent wrote, with its key, for the person to read
 | `page_rec_saved` | Saved |
 | `page_playing` | Playing |
 | `page_play_failed` | The voice note could not be played. |
-| `page_switch` | Switch athlete |
+| `page_switch` | Your name and this phone |
 | `page_home_screen` | To fill the screen, choose Share, then Add to Home Screen. |
 | `page_note_missing` | Fill in the lift and the title first. |
 | `page_save_failed` | The voice note could not be saved. |
@@ -225,7 +224,7 @@ Each reader-visible string the agent wrote, with its key, for the person to read
 | `err_coach_only` | That needs the coach passcode. |
 | `err_server` | The database refused the request. Try again. |
 | `passcode_coach_button` | I'm the coach |
-| `passcode_group_button` | Use the group passcode |
+| `passcode_group_button` | Back to the names |
 | `passcode_coach_heading` | Coach passcode |
 | `passcode_coach_text` | Type the coach passcode. It also opens everything an athlete sees. |
 | `phone_heading` | This phone |
@@ -237,3 +236,19 @@ Each reader-visible string the agent wrote, with its key, for the person to read
 | `max_up` | Up {n} lb from {date} |
 | `max_down` | Down {n} lb from {date} |
 | `max_same` | Same as {date} |
+| `names_heading` | Tap your name |
+| `names_text` | Then tap the vertical you want. |
+| `names_loading` | Loading the names… |
+| `goal_heading` | {name}, what vertical do you want? |
+| `goal_text` | Tap your goal, in inches. The coach set it for you. |
+| `goal_option` | {n} inches |
+| `goal_back` | Not me |
+| `coach_goals_heading` | Vertical goals |
+| `coach_goals_text` | Each athlete taps their goal to sign in. Set one for each athlete, then tell them which to tap. |
+| `goal_not_set` | Not set |
+| `goals_save` | Save goals |
+| `err_goal` | That goal is not one of the choices. |
+| `err_not_you` | That name is not yours. |
+| `err_too_many` | Too many wrong tries. Wait a few minutes and try again. |
+| `page_names_failed` | The names could not be loaded. Check the signal and reload. |
+| `who_you` | You are {name}. |

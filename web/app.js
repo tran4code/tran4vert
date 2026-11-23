@@ -226,7 +226,12 @@ async function perform(name, value, extra) {
   draw(result.ok);
   if (name === "passcode.submit") {
     const typed = JSON.parse(value).fields;
-    net.setCodes({ group: typed.group, coach: typed.coach });
+    net.setCodes({ group: "", coach: typed.coach });
+    say(labels.page_checking);
+  }
+  // A tapped goal is the sign-in the calls carry: the athlete's number and the goal.
+  if (result.ok.code) {
+    net.setCodes({ group: result.ok.code, coach: "" });
     say(labels.page_checking);
   }
   await runRequests(result.ok.requests, name, extra);
@@ -274,11 +279,13 @@ async function runRequests(requests, name, extra) {
 async function fail(e, name) {
   const result = call(act, JSON.stringify(state), glossary, "net.failed", e.message);
   if (result.ok) draw(result.ok);
-  if (name === "passcode.submit" || e.message === "bad_passcode") {
+  if (name === "passcode.submit" || name === "goal.pick" || e.message === "bad_passcode") {
     store.remove("group");
     store.remove("coach");
     store.remove("state");
   }
+  // A sign-in that no longer works (the coach changed the goal): start again from the names.
+  if (name === "sync" && e.message === "bad_passcode") location.reload();
 }
 
 function remember(text) {
@@ -359,12 +366,23 @@ async function main() {
       const cached = store.read("state");
       if (cached !== "") await perform("data.load", cached);
       await sync();
+    } else {
+      await showNames();
     }
   } else {
     await perform("demo.start", await (await fetch("data/demo_program.json")).text());
   }
   footer();
   document.body.dataset.ready = "true";
+}
+
+// Before anyone is signed in the page asks the database for the names to tap.
+async function showNames() {
+  try {
+    await perform("names.load", await net.fetchNames());
+  } catch (e) {
+    say(labels.page_names_failed);
+  }
 }
 
 // Under the screens: how to fill the screen on a phone, and a way to forget this phone.

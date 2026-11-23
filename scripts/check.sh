@@ -44,8 +44,8 @@ step "8/10 design journal (scripts/journal_check.py)"
 step "9/10 browser check: demo mode, then the live path against a pretend database (tests/browser/)"
 # This project runs the phone profile too (BRIEF.md: iPhone Safari first).
 export BUILDER_ENGINES="${BUILDER_ENGINES:-chromium firefox webkit webkit-iphone}"
-# The page as built points at the real project: first load and idle must send nothing.
-BUILDER_ENGINES="chromium" "$PY" tests/browser/check.py
+# The page as built points at the real project and asks it for the names on load, so the
+# first-load check that sends nothing runs on the demo copy; live_mock.py checks the live path.
 # The demo interactions run on a copy with the address cleared.
 "$PY" tests/browser/run_demo.py
 "$PY" tests/browser/live_mock.py

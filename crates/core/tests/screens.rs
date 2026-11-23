@@ -154,26 +154,106 @@ const TUE_LIFT: &str = "session-c1-1-1";
 
 // ---- the first screens ----
 
+const NAMES: &str = r#"[{"id":1,"name":"Sam"},{"id":2,"name":"Jo"},{"id":3,"name":"Pat"}]"#;
+
 #[test]
-fn the_page_starts_on_the_passcode_screen_and_asks_for_nothing_yet() {
+fn the_page_starts_with_no_names_and_asks_for_nothing_yet() {
     let p = Page::open("2026-12-01");
     assert_eq!(p.ui["screen"], "passcode");
     assert_eq!(p.requests().len(), 0);
-    let fields: Vec<&str> = p.panel("passcode")["fields"]
+    assert_eq!(p.panel("names")["text"], "Loading the names…");
+    // The coach's way in is a button, not a field.
+    assert_eq!(p.panel("coach-login")["actions"][0]["name"], "passcode.coach");
+    assert!(!p.has_panel("passcode"));
+}
+
+#[test]
+fn tapping_a_name_then_a_goal_signs_in_and_the_core_never_sees_a_typed_secret() {
+    let mut p = Page::open("2026-12-01");
+    p.act("names.load", NAMES);
+    let names: Vec<&str> = p.panel("names")["rows"]
         .as_array()
         .unwrap()
         .iter()
-        .map(|f| s(&f["name"]))
+        .map(|r| s(&r["label"]))
         .collect();
-    // The coach's field is out of sight until asked for.
-    assert_eq!(fields, vec!["group"]);
-    assert_eq!(p.panel("passcode")["fields"][0]["kind"], "password");
+    assert_eq!(names, vec!["Sam", "Jo", "Pat"]);
+    p.act("login.name", "2");
+    assert_eq!(p.panel("goal")["heading"], "Jo, what vertical do you want?");
+    let options: Vec<&str> = p.panel("goal")["actions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|a| s(&a["label"]))
+        .collect();
+    assert_eq!(options.first(), Some(&"30 inches"));
+    assert_eq!(options[options.len() - 2], "60 inches");
+    assert_eq!(options.len(), 17); // sixteen goals and "Not me"
+                                   // 40 inches for Jo: one call for the state, and the sign-in "2:40" for the page to send.
+    p.act("goal.pick", "40");
+    assert_eq!(p.requests().len(), 1);
+    assert_eq!(p.requests()[0]["rpc"], "get_state");
+    assert_eq!(p.ui["code"], "2:40");
+    // A goal that is not a choice, and a goal with no name tapped, are refused.
+    assert_eq!(
+        p.try_act("goal.pick", "41").unwrap_err(),
+        "That goal is not one of the choices."
+    );
+    let mut q = Page::open("2026-12-01");
+    q.act("names.load", NAMES);
+    assert!(q.try_act("goal.pick", "40").is_err());
+    assert!(q.try_act("login.name", "9").is_err());
+}
+
+#[test]
+fn not_me_goes_back_to_the_names_and_a_refusal_is_shown_on_the_goal_screen() {
+    let mut p = Page::open("2026-12-01");
+    p.act("names.load", NAMES);
+    p.act("login.name", "1");
+    p.act("net.failed", "bad_passcode");
+    assert_eq!(p.panel("goal")["marker"], "That is not it. Try again.");
+    p.act("net.failed", "too_many");
+    assert_eq!(
+        p.panel("goal")["marker"],
+        "Too many wrong tries. Wait a few minutes and try again."
+    );
+    p.act("login.back", "");
+    assert!(p.has_panel("names"));
+    assert_eq!(p.panel("names")["marker"], Value::Null);
+}
+
+#[test]
+fn a_signed_in_athlete_is_that_athlete_and_cannot_be_another_but_the_coach_can() {
+    let mut p = Page::open("2026-12-01");
+    p.act("names.load", NAMES);
+    p.act("login.name", "2");
+    let mut state = serde_json::from_str::<Value>(&remote("athlete")).unwrap();
+    state["me"] = json!(2);
+    p.act("data.load", &state.to_string());
+    // No name screen: straight to today, as Jo.
+    assert_eq!(p.ui["screen"], "today");
+    assert_eq!(p.ui["header"]["who"], "Jo");
+    assert_eq!(
+        p.try_act("athlete.pick", "1").unwrap_err(),
+        "That name is not yours."
+    );
+    p.act("athlete.pick", "2");
+    // Tapping the name shows this phone's panel and no other names.
+    p.act("athlete.switch", "");
+    assert_eq!(p.panel("who-you")["text"], "You are Jo.");
+    assert!(p.has_panel("phone") && !p.has_panel("who"));
+    // The coach may be anyone.
+    let mut c = Page::open("2026-12-01");
+    c.act("data.load", &remote("coach"));
+    c.act("athlete.pick", "1");
+    c.act("athlete.pick", "3");
+    c.act("athlete.switch", "");
+    assert!(c.has_panel("who"));
 }
 
 #[test]
 fn the_coach_passcode_field_shows_only_when_asked_for_and_can_be_put_away() {
     let mut p = Page::open("2026-12-01");
-    assert_eq!(p.panel("passcode")["actions"][1]["name"], "passcode.coach");
     p.act("passcode.coach", "");
     let names: Vec<&str> = p.panel("passcode")["fields"]
         .as_array()
@@ -185,7 +265,22 @@ fn the_coach_passcode_field_shows_only_when_asked_for_and_can_be_put_away() {
     assert_eq!(p.panel("passcode")["heading"], "Coach passcode");
     assert_eq!(p.panel("passcode")["actions"][1]["name"], "passcode.group");
     p.act("passcode.group", "");
-    assert_eq!(p.panel("passcode")["fields"][0]["name"], "group");
+    assert!(p.has_panel("coach-login"));
+}
+
+#[test]
+fn an_empty_coach_passcode_is_refused_and_a_typed_one_becomes_one_request() {
+    let mut p = Page::open("2026-12-01");
+    p.act("passcode.coach", "");
+    let e = p
+        .try_act("passcode.submit", &form("", json!({"coach": "  "})))
+        .unwrap_err();
+    assert_eq!(e, "Type a passcode first.");
+    p.act("passcode.submit", &form("", json!({"coach": "y"})));
+    assert_eq!(p.requests().len(), 1);
+    assert_eq!(p.requests()[0]["rpc"], "get_state");
+    // The core never holds the passcode: nothing the page keeps names it.
+    assert!(!p.state.contains("\"y\""));
 }
 
 #[test]
@@ -226,32 +321,6 @@ fn the_maxes_screen_says_how_each_max_compares_with_the_one_before() {
     let same = json!({"rpc": "add_max", "args": {"athlete": 1, "lift": "anvil_squat", "weight": 295, "date": "2026-11-25"}}).to_string();
     p.act("data.apply", &same);
     assert_eq!(p.row("maxrec-7")["detail"], "Same as 2026-11-20");
-}
-
-#[test]
-fn an_empty_passcode_is_refused_and_a_typed_one_becomes_one_request() {
-    let mut p = Page::open("2026-12-01");
-    let e = p
-        .try_act("passcode.submit", &form("", json!({"group": "  ", "coach": ""})))
-        .unwrap_err();
-    assert_eq!(e, "Type a passcode first.");
-    p.act("passcode.submit", &form("", json!({"group": "x", "coach": ""})));
-    assert_eq!(p.requests().len(), 1);
-    // The coach passcode alone is enough.
-    let mut c = Page::open("2026-12-01");
-    c.act("passcode.submit", &form("", json!({"group": "", "coach": "y"})));
-    assert_eq!(c.requests().len(), 1);
-    assert_eq!(p.requests()[0]["rpc"], "get_state");
-    // The core never holds the passcode: nothing the page keeps names it.
-    assert!(!p.state.contains("\"x\""));
-}
-
-#[test]
-fn a_refused_passcode_shows_its_reason_on_the_passcode_screen() {
-    let mut p = Page::open("2026-12-01");
-    p.act("net.failed", "bad_passcode");
-    assert_eq!(p.ui["screen"], "passcode");
-    assert_eq!(p.panel("passcode")["marker"], "That passcode was not accepted.");
 }
 
 #[test]
@@ -817,6 +886,49 @@ fn the_coach_records_a_note_and_deletes_one() {
     p.act("note.play", "2");
     assert_eq!(p.requests()[0]["rpc"], "get_note_audio");
     assert!(p.try_act("note.play", "99").is_err());
+}
+
+#[test]
+fn the_coach_sets_goals_and_only_changed_ones_go_out() {
+    let mut p = Page::signed_in("2026-12-01", "coach", 1);
+    p.act("screen.show", "coach");
+    p.act(
+        "goals.set",
+        &form("", json!({"goal_1": "40", "goal_2": "", "goal_3": "50"})),
+    );
+    let sent: Vec<(u64, u64)> = p
+        .requests()
+        .iter()
+        .map(|r| {
+            (
+                r["args"]["athlete"].as_u64().unwrap(),
+                r["args"]["goal"].as_u64().unwrap(),
+            )
+        })
+        .collect();
+    assert_eq!(sent, vec![(1, 40), (3, 50)]);
+    assert_eq!(p.requests()[0]["rpc"], "set_goal");
+    // Once those are applied, the same form changes nothing.
+    for r in p.requests().clone() {
+        p.act("data.apply", &r.to_string());
+    }
+    p.act(
+        "goals.set",
+        &form("", json!({"goal_1": "40", "goal_2": "", "goal_3": "50"})),
+    );
+    assert_eq!(p.requests().len(), 0);
+    assert_eq!(p.ui["message"], "Nothing changed.");
+    assert_eq!(
+        p.try_act("goals.set", &form("", json!({"goal_1": "41"})))
+            .unwrap_err(),
+        "That goal is not one of the choices."
+    );
+    let mut a = Page::signed_in("2026-12-01", "athlete", 1);
+    assert_eq!(
+        a.try_act("goals.set", &form("", json!({"goal_1": "40"})))
+            .unwrap_err(),
+        "That needs the coach passcode."
+    );
 }
 
 #[test]

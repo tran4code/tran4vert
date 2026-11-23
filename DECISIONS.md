@@ -15,3 +15,7 @@ Asked: how to handle paid program text and personal maxes on a site that must be
 > i want to use fable to create a plan and then create the code in a lower model of your suggestion.
 
 The agent decided: the planning session wrote `BRIEF.md`, `PLAN.md` and the private program file; the build is done by a second session. Publishing was not granted: Deploys `on my word`.
+
+> Replace the passcode (2026-11-23, after the build)
+
+Asked: the person wanted friends to tap instead of type: a name, then the vertical each wants (for example 40 or 50 inches). The agent said a few choices can be guessed and offered a confirm-after-passcode version; the person chose to replace the passcode. The agent decided: sixteen goals, set by the coach, five wrong tries lock an athlete out for fifteen minutes, the coach keeps a typed passcode behind a button, names are public. `SECOND-ORDER.md` R2.17.

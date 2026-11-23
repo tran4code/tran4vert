@@ -17,7 +17,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
-use crate::data::{apply, Data, Request};
+use crate::data::{apply, Data, NameRec, Request, GOALS};
 use crate::dates;
 use crate::glossary;
 use crate::maxes;
@@ -78,9 +78,16 @@ pub struct State {
     /// The name screen asks whether to forget this phone.
     #[serde(default)]
     pub forgetting: bool,
+    /// The names to tap before anyone is signed in.
+    #[serde(default)]
+    pub names: Vec<NameRec>,
+    /// The athlete who tapped their name and is choosing a goal.
+    #[serde(default)]
+    pub pick_for: Option<u64>,
 }
 
-type Out = Result<(State, Vec<Request>, String), String>;
+/// The new state, the calls to make, the sign-in to send with them, and a message.
+type Out = Result<(State, Vec<Request>, String, String), String>;
 
 fn fill_numbers(text: &str) -> String {
     page::fill(
@@ -111,7 +118,7 @@ fn keep_text(st: &State) -> String {
     }
 }
 
-fn render(st: State, hints: Vec<Hint>, requests: Vec<Request>, message: String) -> Ui<State> {
+fn render(st: State, hints: Vec<Hint>, requests: Vec<Request>, code: String, message: String) -> Ui<State> {
     let s = st.strings.clone();
     let today = dates::parse(&st.today).unwrap_or(0);
     let data = st.data.clone();
@@ -131,7 +138,7 @@ fn render(st: State, hints: Vec<Hint>, requests: Vec<Request>, message: String) 
             };
             (
                 s.t("title_passcode"),
-                view::passcode(&s, &err, st.coach_field),
+                view::passcode(&st, &s, &err),
                 Vec::new(),
                 view::header(None, &st, &s),
             )
@@ -185,6 +192,7 @@ fn render(st: State, hints: Vec<Hint>, requests: Vec<Request>, message: String) 
         hints,
         requests,
         keep,
+        code,
         message,
         labels: page_labels(&s),
         state: st,
@@ -247,8 +255,10 @@ pub fn start(strings_json: &str, glossary_md: &str, today: &str) -> String {
             failure: String::new(),
             coach_field: false,
             forgetting: false,
+            names: Vec::new(),
+            pick_for: None,
         };
-        Ok(render(state, hints, Vec::new(), String::new()))
+        Ok(render(state, hints, Vec::new(), String::new(), String::new()))
     };
     match run() {
         Ok(u) => ok(&u),
@@ -322,6 +332,7 @@ fn demo_data(program_json: &str, s: &Strings, today: i64) -> Result<Data, String
             id: n,
             name: s.t(&format!("demo_athlete_{n}")),
             start: start.clone(),
+            goal: None,
         })
         .collect();
     let max = |id: u64, lift: &str, weight: u32| crate::data::MaxRec {
@@ -343,11 +354,17 @@ fn demo_data(program_json: &str, s: &Strings, today: i64) -> Result<Data, String
         notes: Vec::new(),
         cycle_notes: Vec::new(),
         role: "athlete".to_string(),
+        me: None,
         as_of: dates::format(today),
     })
 }
 
 fn after_load(st: &mut State) {
+    // An athlete who signed in by tapping a goal is that athlete; nobody else's name applies.
+    if let Some(me) = st.data.as_ref().and_then(|d| d.me) {
+        st.athlete = Some(me);
+    }
+    st.pick_for = None;
     let valid = match (&st.data, st.athlete) {
         (Some(d), Some(id)) => d.athlete(id).is_some(),
         _ => false,
@@ -370,6 +387,7 @@ fn step(mut st: State, name: &str, value: &str) -> Out {
     let s = st.strings.clone();
     let mut requests: Vec<Request> = Vec::new();
     let mut message = String::new();
+    let mut code = String::new();
     if st.offline && CHANGES.contains(&name) {
         return Err(s.t("err_offline"));
     }
@@ -396,6 +414,31 @@ fn step(mut st: State, name: &str, value: &str) -> Out {
                 apply(data, &request)?;
             }
         }
+        "names.load" => {
+            st.names = serde_json::from_str(value).map_err(|_| s.t("err_unreachable"))?;
+            st.failure.clear();
+        }
+        "login.name" => {
+            let id = number(value, "err_no_athlete", &s)?;
+            if !st.names.iter().any(|n| n.id == id) {
+                return Err(s.t("err_no_athlete"));
+            }
+            st.pick_for = Some(id);
+            st.failure.clear();
+        }
+        "login.back" => {
+            st.pick_for = None;
+            st.failure.clear();
+        }
+        "goal.pick" => {
+            let id = st.pick_for.ok_or_else(|| s.t("err_no_athlete"))?;
+            let goal = number(value, "err_goal", &s)?;
+            if !GOALS.contains(&(goal as u32)) {
+                return Err(s.t("err_goal"));
+            }
+            code = format!("{id}:{goal}");
+            requests.push(Request::new("get_state", args(Vec::new())));
+        }
         "net.offline" => st.offline = true,
         "net.failed" => {
             st.failure = format!("err_{value}");
@@ -408,8 +451,8 @@ fn step(mut st: State, name: &str, value: &str) -> Out {
         }
         "passcode.submit" => {
             let form = Form::parse(value)?;
-            // Either passcode opens the page; the coach passcode alone is enough for the coach.
-            if form.field("group").is_empty() && form.field("coach").is_empty() {
+            // The coach is the one who types a passcode; athletes tap a name and a goal.
+            if form.field("coach").is_empty() {
                 st.failure = "err_passcode_empty".into();
                 return Err(s.t("err_passcode_empty"));
             }
@@ -429,8 +472,13 @@ fn step(mut st: State, name: &str, value: &str) -> Out {
         }
         "athlete.pick" => {
             let id = number(value, "err_no_athlete", &s)?;
-            if need_data(&st)?.athlete(id).is_none() {
+            let data = need_data(&st)?;
+            if data.athlete(id).is_none() {
                 return Err(s.t("err_no_athlete"));
+            }
+            // Someone who signed in as an athlete stays that athlete; the coach may be anyone.
+            if data.me.is_some_and(|me| me != id) && !data.is_coach() {
+                return Err(s.t("err_not_you"));
             }
             st.athlete = Some(id);
             st.screen = "today".into();
@@ -626,6 +674,29 @@ fn step(mut st: State, name: &str, value: &str) -> Out {
                 message = s.t("nothing_changed");
             }
         }
+        "goals.set" => {
+            let data = need_data(&st)?;
+            if !data.is_coach() {
+                return Err(s.t("err_not_coach"));
+            }
+            let form = Form::parse(value)?;
+            for a in &data.athletes {
+                let wanted = form.field(&format!("goal_{}", a.id));
+                if wanted.is_empty() || wanted == a.goal.map(|g| g.to_string()).unwrap_or_default() {
+                    continue;
+                }
+                let goal = number(&wanted, "err_goal", &s)?;
+                let request = checked(
+                    data,
+                    Request::new("set_goal", json!({"athlete": a.id, "goal": goal})),
+                )
+                .map_err(|_| s.t("err_goal"))?;
+                requests.push(request);
+            }
+            if requests.is_empty() {
+                message = s.t("nothing_changed");
+            }
+        }
         "cyclenote.set" => {
             let data = need_data(&st)?;
             if !data.is_coach() {
@@ -653,7 +724,7 @@ fn step(mut st: State, name: &str, value: &str) -> Out {
         }
         other => return Err(format!("Unknown action \"{other}\".")),
     }
-    Ok((st, requests, message))
+    Ok((st, requests, code, message))
 }
 
 /// A length in milliseconds, as text, written `m:ss` and cut down to whole
@@ -669,8 +740,8 @@ pub fn act(state_json: &str, glossary_md: &str, name: &str, value: &str) -> Stri
         let state: State =
             serde_json::from_str(state_json).map_err(|e| format!("The state could not be read: {e}"))?;
         let hints = hints_from(glossary_md)?;
-        let (state, requests, message) = step(state, name, value)?;
-        Ok(render(state, hints, requests, message))
+        let (state, requests, code, message) = step(state, name, value)?;
+        Ok(render(state, hints, requests, code, message))
     };
     match run() {
         Ok(u) => ok(&u),

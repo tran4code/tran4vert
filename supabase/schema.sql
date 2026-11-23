@@ -3,16 +3,23 @@
 -- no secret: passcodes are set afterwards, by the person, in the SQL editor.
 --
 -- The page ships in a public repository with a *publishable* key, so every table
--- is closed to that key. The page reaches data only through the functions below,
--- and each one takes the passcode and checks it first. A wrong passcode raises
--- `bad_passcode` after half a second. The coach functions also need the coach
--- passcode (`coach_only` otherwise). Audio is capped at 2 MB.
+-- is closed to that key. The page reaches data only through the functions below.
 --
--- After running this file, in the same editor (type your own passcodes):
+-- Signing in: an athlete taps their name, then the vertical they want (their
+-- "goal", in inches, set by the coach). The page sends it as "<athlete id>:<goal>".
+-- That is a light lock, not a strong one: there are only a few choices, so five
+-- wrong tries for one athlete lock that athlete out for fifteen minutes
+-- (`too_many`), and every wrong try waits half a second (`bad_passcode`). The
+-- coach has a typed passcode, which also opens everything. The coach functions
+-- need it (`coach_only` otherwise). An athlete changes only their own maxes and
+-- moves (`not_yours`). Audio is capped at 2 MB.
 --
---   select set_passcode('group', 'the group passcode');
+-- Safe to run again: it keeps the data and replaces the functions.
+--
+-- First run, in the same editor (type your own coach passcode):
+--
 --   select set_passcode('coach', 'the coach passcode');
---   insert into athletes (name, start) values ('First name', '2026-11-30');  -- once per athlete, a Monday
+--   insert into athletes (name, start, goal) values ('First name', '2026-11-30', 40);  -- once per athlete; a Monday; the goal they will tap
 --
 -- then run `python3.13 tools/seed.py` on your computer to load the program.
 
@@ -29,7 +36,14 @@ create table if not exists public.program (
 create table if not exists public.athletes (
   id int generated always as identity primary key,
   name text not null check (char_length(name) between 1 and 40),
-  start date not null check (extract(isodow from start) = 1)
+  start date not null check (extract(isodow from start) = 1),
+  goal int check (goal between 10 and 99)
+);
+alter table public.athletes add column if not exists goal int check (goal between 10 and 99);
+
+create table if not exists public.attempts (
+  athlete int not null,
+  at timestamptz not null default now()
 );
 
 create table if not exists public.maxes (
@@ -76,6 +90,7 @@ alter table public.moves enable row level security;
 alter table public.voice_notes enable row level security;
 alter table public.cycle_notes enable row level security;
 alter table public.secrets enable row level security;
+alter table public.attempts enable row level security;
 -- No policies on purpose: with row-level security on and no policy, the
 -- publishable key can read and write nothing in these tables directly.
 revoke all on all tables in schema public from anon, authenticated;
@@ -85,14 +100,42 @@ revoke all on all sequences in schema public from anon, authenticated;
 
 create or replace function private.role_of(p_code text)
 returns text language plpgsql security definer set search_path = public, extensions as $$
-declare c text; g text;
+declare c text; a int; v_goal int; failed int;
 begin
+  if p_code ~ '^[0-9]{1,9}:[0-9]{1,3}$' then
+    a := split_part(p_code, ':', 1)::int;
+    v_goal := split_part(p_code, ':', 2)::int;
+    select count(*) into failed from public.attempts where athlete = a and at > now() - interval '15 minutes';
+    if failed >= 5 then
+      perform pg_sleep(0.5);
+      raise exception 'too_many';
+    end if;
+    if exists (select 1 from public.athletes x where x.id = a and x.goal is not null and x.goal = v_goal) then
+      return 'athlete';
+    end if;
+    insert into public.attempts (athlete) values (a);
+    delete from public.attempts where at < now() - interval '1 day';
+    perform pg_sleep(0.5);
+    raise exception 'bad_passcode';
+  end if;
   select hash into c from public.secrets where name = 'coach';
-  select hash into g from public.secrets where name = 'group';
   if p_code is not null and c is not null and c = crypt(p_code, c) then return 'coach'; end if;
-  if p_code is not null and g is not null and g = crypt(p_code, g) then return 'athlete'; end if;
   perform pg_sleep(0.5);
   raise exception 'bad_passcode';
+end $$;
+
+-- The athlete a sign-in belongs to, or null for the coach.
+create or replace function private.athlete_of(p_code text)
+returns int language sql immutable as $$
+  select case when p_code ~ '^[0-9]{1,9}:[0-9]{1,3}$' then split_part(p_code, ':', 1)::int end
+$$;
+
+-- An athlete may change their own data; the coach may change anyone's.
+create or replace function private.can_act(p_code text, p_athlete int)
+returns void language plpgsql security definer set search_path = public, extensions as $$
+begin
+  if private.role_of(p_code) = 'coach' then return; end if;
+  if private.athlete_of(p_code) is distinct from p_athlete then raise exception 'not_yours'; end if;
 end $$;
 
 create or replace function private.need_coach(p_code text)
@@ -117,7 +160,7 @@ end $$;
 create or replace function public.set_passcode(p_kind text, p_code text)
 returns void language plpgsql security definer set search_path = public, extensions as $$
 begin
-  if p_kind not in ('group', 'coach') then raise exception 'unknown kind'; end if;
+  if p_kind <> 'coach' then raise exception 'only the coach has a passcode'; end if;
   if p_code is null or char_length(p_code) < 4 then raise exception 'use at least 4 characters'; end if;
   insert into public.secrets (name, hash) values (p_kind, crypt(p_code, gen_salt('bf')))
   on conflict (name) do update set hash = excluded.hash;
@@ -131,10 +174,12 @@ declare r text := private.role_of(p_code);
 begin
   return jsonb_build_object(
     'role', r,
+    'me', private.athlete_of(p_code),
     'as_of', to_char(current_date, 'YYYY-MM-DD'),
     'program', coalesce((select body from public.program where id = 1), '{}'::jsonb),
     'athletes', coalesce((select jsonb_agg(jsonb_build_object('id', id, 'name', name,
-        'start', to_char(start, 'YYYY-MM-DD')) order by id) from public.athletes), '[]'::jsonb),
+        'start', to_char(start, 'YYYY-MM-DD')) || case when r = 'coach' and goal is not null
+        then jsonb_build_object('goal', goal) else '{}'::jsonb end order by id) from public.athletes), '[]'::jsonb),
     'maxes', coalesce((select jsonb_agg(jsonb_build_object('id', id, 'athlete', athlete, 'lift', lift,
         'weight', weight, 'date', to_char(date, 'YYYY-MM-DD')) order by id) from public.maxes), '[]'::jsonb),
     'moves', coalesce((select jsonb_agg(jsonb_build_object('athlete', athlete, 'cycle', cycle, 'week', week,
@@ -145,6 +190,12 @@ begin
         from public.cycle_notes), '[]'::jsonb)
   );
 end $$;
+
+-- The names to tap, before anyone is signed in. Names and ids only.
+create or replace function public.get_names()
+returns jsonb language sql security definer set search_path = public, extensions as $$
+  select coalesce(jsonb_agg(jsonb_build_object('id', id, 'name', name) order by id), '[]'::jsonb) from public.athletes
+$$;
 
 create or replace function public.get_note_audio(p_code text, p_id bigint)
 returns bytea language plpgsql security definer set search_path = public, extensions as $$
@@ -162,7 +213,7 @@ create or replace function public.add_max(p_code text, p_athlete int, p_lift tex
 returns bigint language plpgsql security definer set search_path = public, extensions as $$
 declare new_id bigint;
 begin
-  perform private.role_of(p_code);
+  perform private.can_act(p_code, p_athlete);
   if not exists (select 1 from public.athletes where id = p_athlete) then raise exception 'no_such_athlete'; end if;
   if not coalesce((select (body -> 'lifts') ? p_lift from public.program where id = 1), false) then
     raise exception 'no_such_lift';
@@ -174,15 +225,17 @@ end $$;
 
 create or replace function public.delete_max(p_code text, p_id bigint)
 returns void language plpgsql security definer set search_path = public, extensions as $$
+declare a int;
 begin
-  perform private.role_of(p_code);
+  select athlete into a from public.maxes where id = p_id;
+  perform private.can_act(p_code, a);
   delete from public.maxes where id = p_id;
 end $$;
 
 create or replace function public.move_session(p_code text, p_athlete int, p_cycle text, p_week int, p_dow int, p_to text)
 returns void language plpgsql security definer set search_path = public, extensions as $$
 begin
-  perform private.role_of(p_code);
+  perform private.can_act(p_code, p_athlete);
   if not exists (select 1 from public.athletes where id = p_athlete) then raise exception 'no_such_athlete'; end if;
   if not exists (select 1 from public.program, jsonb_array_elements(body -> 'cycles') c
                  where id = 1 and c ->> 'id' = p_cycle) then raise exception 'no_such_session'; end if;
@@ -194,7 +247,7 @@ end $$;
 create or replace function public.undo_move(p_code text, p_athlete int, p_cycle text, p_week int, p_dow int)
 returns void language plpgsql security definer set search_path = public, extensions as $$
 begin
-  perform private.role_of(p_code);
+  perform private.can_act(p_code, p_athlete);
   delete from public.moves where athlete = p_athlete and cycle = p_cycle and week = p_week and dow = p_dow;
 end $$;
 
@@ -234,6 +287,14 @@ begin
   if not found then raise exception 'no_such_athlete'; end if;
 end $$;
 
+create or replace function public.set_goal(p_code text, p_athlete int, p_goal int)
+returns void language plpgsql security definer set search_path = public, extensions as $$
+begin
+  perform private.need_coach(p_code);
+  update public.athletes set goal = p_goal where id = p_athlete;
+  if not found then raise exception 'no_such_athlete'; end if;
+end $$;
+
 create or replace function public.set_cycle_note(p_code text, p_cycle text, p_text text)
 returns void language plpgsql security definer set search_path = public, extensions as $$
 begin
@@ -261,6 +322,7 @@ end $$;
 revoke all on schema private from public, anon, authenticated;
 revoke execute on all functions in schema public from public, anon, authenticated;
 grant execute on function
+  public.get_names(), public.set_goal(text, int, int),
   public.get_state(text), public.get_note_audio(text, bigint),
   public.add_max(text, int, text, int, text), public.delete_max(text, bigint),
   public.move_session(text, int, text, int, int, text), public.undo_move(text, int, text, int, int),

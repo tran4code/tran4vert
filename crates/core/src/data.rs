@@ -19,6 +19,9 @@ pub const MAX_WEIGHT: u32 = 1500;
 pub const MAX_NOTE_SECONDS: u32 = 180;
 /// The longest voice note title, in characters.
 pub const MAX_TITLE: usize = 60;
+/// The verticals an athlete can tap to sign in, in inches. The coach sets one
+/// for each athlete. It is a light lock among friends, not a strong one.
+pub const GOALS: [u32; 16] = [30, 32, 34, 36, 38, 40, 42, 44, 46, 48, 50, 52, 54, 56, 58, 60];
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AthleteRec {
@@ -26,6 +29,16 @@ pub struct AthleteRec {
     pub name: String,
     /// The Monday of cycle 1 week 1, as `YYYY-MM-DD`.
     pub start: String,
+    /// The vertical this athlete taps to sign in. Only the coach is sent it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub goal: Option<u32>,
+}
+
+/// A name to tap before anyone is signed in.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct NameRec {
+    pub id: u64,
+    pub name: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -79,6 +92,9 @@ pub struct Data {
     /// `coach` when the passcode given was the coach's, else `athlete`.
     #[serde(default)]
     pub role: String,
+    /// The athlete who signed in by tapping a goal; none for the coach and the demo.
+    #[serde(default)]
+    pub me: Option<u64>,
     /// The date the database answered on; shown when the phone is offline.
     #[serde(default)]
     pub as_of: String,
@@ -235,6 +251,19 @@ pub fn apply(data: &mut Data, request: &Request) -> Result<(), String> {
                 .find(|x| x.id == athlete)
                 .ok_or_else(|| format!("There is no athlete {athlete}."))?;
             rec.start = start;
+        }
+        "set_goal" => {
+            let athlete = number(a, "athlete")?;
+            let goal = u32::try_from(number(a, "goal")?).map_err(|_| "The goal is too large.".to_string())?;
+            if !GOALS.contains(&goal) {
+                return Err(format!("{goal} is not one of the choices."));
+            }
+            let rec = data
+                .athletes
+                .iter_mut()
+                .find(|x| x.id == athlete)
+                .ok_or_else(|| format!("There is no athlete {athlete}."))?;
+            rec.goal = Some(goal);
         }
         "set_cycle_note" => {
             let cycle = text(a, "cycle")?.to_string();

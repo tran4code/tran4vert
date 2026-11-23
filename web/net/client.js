@@ -74,6 +74,11 @@ async function withCodes(name, args, wantBytes) {
   throw last;
 }
 
+// The names to tap, before anyone is signed in: names and ids, no data.
+export function fetchNames() {
+  return call("get_names", {}, false);
+}
+
 export function fetchState() {
   return withCodes("get_state", {}, false);
 }

@@ -6,18 +6,21 @@ project address in the copy (the same edit tools/set_project.py makes), and
 answers that address from Playwright's router with a small in-memory version
 of the database's functions. It shows, in each engine:
 
-  - first load and idle send nothing to the database, and the passcode screen shows;
-  - a wrong passcode is refused in words, and nothing is kept;
-  - the right passcode shows three names; a tap shows that athlete's session;
-  - after a reload the passcode and the name are not asked for again;
+  - first load and idle make one call, for the names to tap, and send no sign-in;
+  - tapping a name and a wrong goal is refused in words, and nothing is kept;
+  - five wrong goals for one athlete lock that athlete out, as the database does;
+  - the right goal signs in as that athlete, with no way to be another;
+  - after a reload the name and goal are not asked for again;
   - a new max is sent as a call with the athlete, lift, weight and date, and the
     data is fetched again;
   - with the database unreachable, a reload still draws the last session, says it
     is offline, and turns the change buttons off;
-  - "Forget this phone" brings back the passcode screen;
+  - "Forget this phone" asks first, then brings back the names;
+  - the coach's passcode field is out of sight until "I'm the coach" is tapped;
   - no request goes anywhere except the page's own origin and the pretend address.
 
-The passcodes here are made up for this test and belong to no real project.
+The goals and the passcode here are made up for this test and belong to no real
+project.
 
     python3 tests/browser/live_mock.py     (BUILDER_ENGINES as for check.py)
 """
@@ -38,7 +41,8 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 ENGINES = os.environ.get("BUILDER_ENGINES", "chromium firefox webkit").split()
 MOCK = "https://mock.supabase.test"
 KEY = "pretend-publishable-key-0000000000"
-GROUP, COACH = "mock-group-code", "mock-coach-code"
+COACH = "mock-coach-code"
+GOALS = {1: 40, 2: 50, 3: 44}
 TODAY = "2026-12-01T09:00:00"
 failures = []
 
@@ -84,15 +88,31 @@ class Database:
         }
         self.up = True
         self.calls = []
+        self.failed = {}
 
     def answer(self, name, body):
-        code = body.get("p_code")
-        role = "coach" if code == COACH else "athlete" if code == GROUP else None
-        if role is None:
+        if name == "get_names":
+            return 200, [{"id": a["id"], "name": a["name"]} for a in self.state["athletes"]]
+        code = str(body.get("p_code", ""))
+        me = None
+        if code == COACH:
+            role = "coach"
+        elif ":" in code:
+            who, goal = code.split(":", 1)
+            who = int(who)
+            if self.failed.get(who, 0) >= 5:
+                return 400, {"message": "too_many"}
+            if GOALS.get(who) != int(goal):
+                self.failed[who] = self.failed.get(who, 0) + 1
+                return 400, {"message": "bad_passcode"}
+            role, me = "athlete", who
+        else:
             return 400, {"message": "bad_passcode"}
         if name == "get_state":
-            return 200, {**self.state, "role": role}
+            return 200, {**self.state, "role": role, "me": me}
         if name == "add_max":
+            if role == "athlete" and body["p_athlete"] != me:
+                return 400, {"message": "not_yours"}
             rows = self.state["maxes"]
             rows.append({"id": len(rows) + 1, "athlete": body["p_athlete"], "lift": body["p_lift"],
                          "weight": body["p_weight"], "date": body["p_date"]})
@@ -162,29 +182,45 @@ def run_engine(p, engine, origin):
     # The clock is installed after the first load and the page reloaded, as interactions.py does,
     # because Firefox and WebKit apply it only to a page loaded after it.
     page.clock.install(time=TODAY)
+    db.calls.clear()
     page.reload()
     page.wait_for_selector("body[data-ready='true']", state="attached")
     page.wait_for_timeout(2000)
-    check(db.calls == [] and "mock" not in hosts, f"first load and idle send nothing to the database {db.calls}")
-    check(page.get_attribute("body", "data-screen") == "passcode", "the passcode screen is shown")
+    page.wait_for_selector("[data-row='name-1']", state="attached")
+    check(
+        [c[0] for c in db.calls] == ["get_names"] and "p_code" not in db.calls[0][1],
+        f"first load and idle make one call, for the names, and send no sign-in {[c[0] for c in db.calls]}",
+    )
+    check(page.get_attribute("body", "data-screen") == "passcode", "the first screen is the sign-in screen")
+    names = [page.text_content(f"[data-row='name-{n}'] strong") or page.text_content(f"[data-row='name-{n}'] button") for n in (1, 2, 3)]
+    check([n.strip() for n in names] == ["Sam", "Jo", "Pat"], f"three names to tap {names}")
+    check(page.query_selector("input") is None, "there is nothing to type on the first screen")
+    check(page.query_selector("#passcode-coach") is None, "the coach's field is out of sight")
 
-    def submit(code):
-        page.fill("#passcode-group", code)
-        page.click("#passcode button:text-is('Enter')")
+    def tap_name(n):
+        page.click(f"[data-row='name-{n}'] button")
+        page.wait_for_selector("#goal", state="attached")
 
-    submit("nope-nope-nope")
-    page.wait_for_selector("#passcode .marker", state="attached")
-    check(page.text_content("#passcode .marker") == "That passcode was not accepted.", "a wrong passcode is refused in words")
-    check(page.get_attribute("body", "data-screen") == "passcode", "a wrong passcode stays on the passcode screen")
-    submit(GROUP)
-    page.wait_for_selector("body[data-screen='who']", state="attached")
-    names = [page.text_content(f"[data-row='athlete-{n}'] strong") for n in (1, 2, 3)]
-    check(names == ["Sam", "Jo", "Pat"], f"the right passcode shows three names {names}")
-    check(db.calls[-1][2] == KEY and db.calls[-1][1]["p_code"] == GROUP, "the call carries the publishable key and the passcode")
-    page.click("[data-row='athlete-1'] button")
+    def tap_goal(n):
+        page.click(f"#goal button:text-is('{n} inches')")
+
+    tap_name(1)
+    tap_goal(30)
+    page.wait_for_selector("#goal .marker", state="attached")
+    check(page.text_content("#goal .marker") == "That is not it. Try again.", "a wrong goal is refused in words")
+    check(page.get_attribute("body", "data-screen") == "passcode", "a wrong goal stays on the sign-in screen")
+    tap_goal(40)
     page.wait_for_selector("body[data-screen='today']", state="attached")
-    shown = page.text_content("#title")
-    check("230 lb" in (page.text_content("[data-row='session-c1-1-1-b1-weight']") or ""), f"the session shows 305 at 75% as 230 ({shown!r})")
+    check(db.calls[-1][2] == KEY and db.calls[-1][1]["p_code"] == "1:40", "the call carries the publishable key and the sign-in")
+    check(page.text_content("#who button") == "Sam", "the page knows who signed in")
+    check("230 lb" in (page.text_content("[data-row='session-c1-1-1-b1-weight']") or ""), "the session shows 305 at 75% as 230")
+
+    # Five wrong goals for Pat lock Pat out, even for the right goal.
+    page.click("#who button")
+    page.wait_for_selector("#who-you", state="attached")
+    check(page.query_selector("[data-row^='athlete-']") is None, "a signed-in athlete is offered no other names")
+    page.click("#who-you button:text-is('Back to today')")
+    page.wait_for_selector("body[data-screen='today']", state="attached")
 
     before = len(db.calls)
     page.reload()
@@ -223,13 +259,22 @@ def run_engine(p, engine, origin):
 
     db.up = True
     page.click("#who button")
-    page.wait_for_selector("body[data-screen='who']", state="attached")
+    page.wait_for_selector("#phone", state="attached")
     page.click("#phone button:text-is('Forget this phone')")
     check(page.query_selector("#phone button:text-is('Yes, forget')") is not None, "forgetting asks first")
     page.click("#phone button:text-is('Yes, forget')")
-    page.wait_for_selector("body[data-screen='passcode']", state="attached")
-    check(page.query_selector("#passcode-coach") is None, "the coach's field is out of sight on the passcode screen")
-    page.click("#passcode button:text-is(\"I'm the coach\")")
+    page.wait_for_selector("[data-row='name-1']", state="attached")
+    check(page.query_selector("#passcode-coach") is None, "after forgetting, the coach's field is out of sight again")
+    # Five wrong goals lock an athlete out, as the database does.
+    tap_name(3)
+    for _ in range(5):
+        tap_goal(30)
+        page.wait_for_selector("#goal .marker:has-text('not it')", state="attached")
+    tap_goal(44)
+    page.wait_for_selector("#goal .marker:has-text('Too many wrong tries')", state="attached")
+    check(True, "five wrong goals lock an athlete out, even for the right goal")
+    page.click("#goal button:text-is('Not me')")
+    page.click("#coach-login button:text-is(\"I'm the coach\")")
     check(page.query_selector("#passcode-coach") is not None, "the coach's field shows when asked for")
     check(True, "forgetting this phone brings back the passcode screen")
     check(not errors, f"no console error or page error {errors}")

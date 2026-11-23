@@ -336,20 +336,6 @@
     "test": "every_string_in_the_strings_file_is_used_by_the_core_or_the_page"
   },
   {
-    "name": "the coach passcode alone is refused",
-    "file": "crates/core/src/api.rs",
-    "find": "if form.field(\"group\").is_empty() && form.field(\"coach\").is_empty() {",
-    "replace": "if form.field(\"group\").is_empty() {",
-    "test": "an_empty_passcode_is_refused_and_a_typed_one_becomes_one_request"
-  },
-  {
-    "name": "the coach field is always shown",
-    "file": "crates/core/src/view.rs",
-    "find": "    let (heading, text, field, other) = if coach {",
-    "replace": "    let (heading, text, field, other) = if !coach || coach {",
-    "test": "the_coach_passcode_field_shows_only_when_asked_for_and_can_be_put_away"
-  },
-  {
     "name": "forgetting happens with no question",
     "file": "crates/core/src/api.rs",
     "find": "\"phone.ask\" => st.forgetting = true,",
@@ -362,5 +348,54 @@
     "find": "std::cmp::Ordering::Less => \"max_down\",",
     "replace": "std::cmp::Ordering::Less => \"max_up\",",
     "test": "the_maxes_screen_says_how_each_max_compares_with_the_one_before"
+  },
+  {
+    "name": "the coach field is always shown",
+    "file": "crates/core/src/view.rs",
+    "find": "    if st.coach_field {",
+    "replace": "    if st.coach_field || true {",
+    "test": "the_coach_passcode_field_shows_only_when_asked_for_and_can_be_put_away"
+  },
+  {
+    "name": "any goal is accepted",
+    "file": "crates/core/src/api.rs",
+    "find": "            if !GOALS.contains(&(goal as u32)) {",
+    "replace": "            if false {",
+    "test": "tapping_a_name_then_a_goal_signs_in_and_the_core_never_sees_a_typed_secret"
+  },
+  {
+    "name": "the sign-in names the wrong athlete",
+    "file": "crates/core/src/api.rs",
+    "find": "            code = format!(\"{id}:{goal}\");",
+    "replace": "            code = format!(\"{goal}:{id}\");",
+    "test": "tapping_a_name_then_a_goal_signs_in_and_the_core_never_sees_a_typed_secret"
+  },
+  {
+    "name": "a signed-in athlete can be another",
+    "file": "crates/core/src/api.rs",
+    "find": "            if data.me.is_some_and(|me| me != id) && !data.is_coach() {",
+    "replace": "            if false {",
+    "test": "a_signed_in_athlete_is_that_athlete_and_cannot_be_another_but_the_coach_can"
+  },
+  {
+    "name": "an athlete sets goals",
+    "file": "crates/core/src/api.rs",
+    "find": "        \"goals.set\" => {\n            let data = need_data(&st)?;\n            if !data.is_coach() {\n                return Err(s.t(\"err_not_coach\"));\n            }",
+    "replace": "        \"goals.set\" => {\n            let data = need_data(&st)?;",
+    "test": "the_coach_sets_goals_and_only_changed_ones_go_out"
+  },
+  {
+    "name": "every goal goes out, changed or not",
+    "file": "crates/core/src/api.rs",
+    "find": "if wanted.is_empty() || wanted == a.goal.map(|g| g.to_string()).unwrap_or_default() {",
+    "replace": "if wanted.is_empty() {",
+    "test": "the_coach_sets_goals_and_only_changed_ones_go_out"
+  },
+  {
+    "name": "an empty coach passcode is sent",
+    "file": "crates/core/src/api.rs",
+    "find": "            if form.field(\"coach\").is_empty() {",
+    "replace": "            if false {",
+    "test": "an_empty_coach_passcode_is_refused_and_a_typed_one_becomes_one_request"
   }
 ]

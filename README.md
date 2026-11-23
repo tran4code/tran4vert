@@ -1,8 +1,8 @@
 # Tran4Vert
 
-A phone web page for three friends on the same four-week-cycle jump-training program. An athlete enters the group passcode, taps their name, and sees today's session and the week, with working weights worked out from their own maxes. The coach records voice notes on a lift, and any athlete can move a session or add a max.
+A phone web page for three friends on the same four-week-cycle jump-training program. An athlete taps their name and then the vertical they want (a goal the coach set for them), and sees today's session and the week, with working weights worked out from their own maxes. The coach records voice notes on a lift, and any athlete can move a session or add a max.
 
-The program text, the maxes, the voice notes and the passcodes are not in this repository. Static files hold the page. A Supabase project holds the data and checks the passcode in every call. Without a project address in `web/net/config.js`, the page runs as a demo with an invented program and made-up athletes.
+The program text, the maxes, the voice notes and the passcodes are not in this repository. Static files hold the page. A Supabase project holds the data and checks the sign-in in every call. Without a project address in `web/net/config.js`, the page runs as a demo with an invented program and made-up athletes.
 
 ## Build, test and serve
 

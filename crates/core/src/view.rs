@@ -6,7 +6,7 @@
 //! here from the rules in the other modules.
 
 use crate::api::{MoveKey, State};
-use crate::data::{AthleteRec, Data, MAX_NOTE_SECONDS, MAX_TITLE};
+use crate::data::{AthleteRec, Data, GOALS, MAX_NOTE_SECONDS, MAX_TITLE};
 use crate::dates;
 use crate::maxes;
 use crate::moves::{self, DayView, Empty, Entry};
@@ -17,7 +17,8 @@ use crate::schedule::{self, CYCLE_WEEKS};
 use crate::ui::{Action, Choice, Field, Header, NavItem, Panel, Row};
 
 /// Action names that change shared data; they are off while the phone is offline.
-pub const CHANGES: [&str; 12] = [
+pub const CHANGES: [&str; 13] = [
+    "goals.set",
     "max.add",
     "max.delete",
     "move.save",
@@ -88,33 +89,78 @@ fn choice(value: &str, label: &str) -> Choice {
 
 // ---- passcode and who ----
 
-pub fn passcode(s: &Strings, error: &str, coach: bool) -> Vec<Panel> {
-    // The coach's passcode stays out of sight until the coach asks for it.
-    let (heading, text, field, other) = if coach {
-        (
-            s.t("passcode_coach_heading"),
-            s.t("passcode_coach_text"),
-            Field::new("coach", &s.t("passcode_coach"), "password", ""),
+pub fn passcode(st: &State, s: &Strings, error: &str) -> Vec<Panel> {
+    let mut panels = Vec::new();
+    if st.coach_field {
+        // The coach's passcode stays out of sight until the coach asks for it.
+        let mut p = Panel::new("passcode", "form")
+            .heading(&s.t("passcode_coach_heading"))
+            .text(&s.t("passcode_coach_text"));
+        p.fields = vec![Field::new("coach", &s.t("passcode_coach"), "password", "")];
+        p.actions = vec![
+            Action::new("passcode.submit", "", &s.t("passcode_enter")),
             Action::new("passcode.group", "", &s.t("passcode_group_button")),
-        )
-    } else {
-        (
-            s.t("passcode_heading"),
-            s.t("passcode_text"),
-            Field::new("group", &s.t("passcode_group"), "password", ""),
-            Action::new("passcode.coach", "", &s.t("passcode_coach_button")),
-        )
-    };
-    let mut p = Panel::new("passcode", "form").heading(&heading).text(&text);
-    p.fields = vec![field];
-    p.actions = vec![Action::new("passcode.submit", "", &s.t("passcode_enter")), other];
+        ];
+        if !error.is_empty() {
+            p.marker = error.to_string();
+        }
+        return vec![p];
+    }
+    if let Some(id) = st.pick_for {
+        let name = st
+            .names
+            .iter()
+            .find(|n| n.id == id)
+            .map(|n| n.name.clone())
+            .unwrap_or_default();
+        let mut p = Panel::new("goal", "list")
+            .heading(&s.f("goal_heading", &[("name", &name)]))
+            .text(&s.t("goal_text"));
+        p.actions = GOALS
+            .iter()
+            .map(|g| {
+                Action::new(
+                    "goal.pick",
+                    &g.to_string(),
+                    &s.f("goal_option", &[("n", &g.to_string())]),
+                )
+            })
+            .collect();
+        p.actions.push(Action::new("login.back", "", &s.t("goal_back")));
+        if !error.is_empty() {
+            p.marker = error.to_string();
+        }
+        return vec![p];
+    }
+    let mut p = Panel::new("names", "list")
+        .heading(&s.t("names_heading"))
+        .text(&s.t("names_text"));
+    if st.names.is_empty() {
+        p.text = s.t("names_loading");
+    }
+    for n in &st.names {
+        let mut row = Row::new(&format!("name-{}", n.id), &n.name);
+        row.actions = vec![Action::new("login.name", &n.id.to_string(), &n.name)];
+        p.rows.push(row);
+    }
     if !error.is_empty() {
         p.marker = error.to_string();
     }
-    vec![p]
+    panels.push(p);
+    let mut c = Panel::new("coach-login", "text");
+    c.actions = vec![Action::new("passcode.coach", "", &s.t("passcode_coach_button"))];
+    panels.push(c);
+    panels
 }
 
 pub fn who(st: &State, data: &Data, s: &Strings) -> Vec<Panel> {
+    // Someone who signed in as an athlete is that athlete: no other names, only this phone.
+    if let (Some(me), false) = (data.me, data.is_coach()) {
+        let name = data.athlete(me).map(|a| a.name.clone()).unwrap_or_default();
+        let mut you = Panel::new("who-you", "text").text(&s.f("who_you", &[("name", &name)]));
+        you.actions = vec![Action::new("screen.show", "today", &s.t("back_today"))];
+        return vec![you, phone_panel(st, s)];
+    }
     let mut p = Panel::new("who", "list")
         .heading(&s.t("who_heading"))
         .text(&s.t("who_text"));
@@ -822,6 +868,23 @@ pub fn coach(ctx: &Ctx) -> (String, Vec<Panel>) {
     }
     starts.actions = vec![Action::new("start.set", "", &s.t("coach_starts_save"))];
     panels.push(starts);
+    let mut goals = Panel::new("coach-goals", "form")
+        .heading(&s.t("coach_goals_heading"))
+        .text(&s.t("coach_goals_text"));
+    for a in &ctx.data.athletes {
+        let mut choices = vec![choice("", &s.t("goal_not_set"))];
+        choices.extend(
+            GOALS
+                .iter()
+                .map(|g| choice(&g.to_string(), &s.f("goal_option", &[("n", &g.to_string())]))),
+        );
+        let current = a.goal.map(|g| g.to_string()).unwrap_or_default();
+        goals
+            .fields
+            .push(Field::new(&format!("goal_{}", a.id), &a.name, "select", &current).with_choices(choices));
+    }
+    goals.actions = vec![Action::new("goals.set", "", &s.t("goals_save"))];
+    panels.push(goals);
     panels.push(recorder(ctx, ""));
     let mut notes_panel = Panel::new("coach-notes", "list").heading(&s.t("coach_notes_heading"));
     for n in &ctx.data.notes {

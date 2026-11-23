@@ -14,6 +14,7 @@ pub fn sample_data() -> Data {
         id,
         name: name.to_string(),
         start: "2026-11-30".to_string(),
+        goal: None,
     };
     let max = |id: u64, athlete: u64, lift: &str, weight: u32, date: &str| MaxRec {
         id,
@@ -47,6 +48,7 @@ pub fn sample_data() -> Data {
         ],
         cycle_notes: Vec::new(),
         role: "athlete".to_string(),
+        me: None,
         as_of: "2026-11-23".to_string(),
     }
 }

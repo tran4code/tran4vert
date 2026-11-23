@@ -194,6 +194,8 @@ pub struct Ui<S: Serialize> {
     pub requests: Vec<Request>,
     /// Text for the phone to keep under `choice`; empty when there is none.
     pub keep: String,
+    /// The sign-in the page sends with the calls it makes, when one was just chosen.
+    pub code: String,
     pub message: String,
     /// The page's own words (the `page_` strings), by key.
     pub labels: std::collections::BTreeMap<String, String>,
