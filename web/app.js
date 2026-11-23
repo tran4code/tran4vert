@@ -213,6 +213,11 @@ function draw(ui) {
 
 // Hands the core one action; draws the answer; makes the calls it asks for.
 async function perform(name, value, extra) {
+  if (name === "page.forget") {
+    ["group", "coach", "choice", "state"].forEach(store.remove);
+    location.reload();
+    return true;
+  }
   const result = call(act, JSON.stringify(state), glossary, name, value);
   if (result.error) {
     say(result.error);
@@ -367,13 +372,6 @@ function footer() {
   const box = el("footer");
   if (!navigator.standalone && matchMedia("(pointer: coarse)").matches) {
     box.append(make("p", labels.page_home_screen));
-  }
-  if (live) {
-    const forget = button({ name: "page.forget", label: labels.page_forget, enabled: true }, () => {
-      ["group", "coach", "choice", "state"].forEach(store.remove);
-      location.reload();
-    });
-    box.append(forget);
   }
 }
 

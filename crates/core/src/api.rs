@@ -72,6 +72,12 @@ pub struct State {
     /// The strings key of the last refusal, shown on the passcode screen.
     #[serde(default)]
     pub failure: String,
+    /// The passcode screen shows the coach's field instead of the group's.
+    #[serde(default)]
+    pub coach_field: bool,
+    /// The name screen asks whether to forget this phone.
+    #[serde(default)]
+    pub forgetting: bool,
 }
 
 type Out = Result<(State, Vec<Request>, String), String>;
@@ -125,7 +131,7 @@ fn render(st: State, hints: Vec<Hint>, requests: Vec<Request>, message: String) 
             };
             (
                 s.t("title_passcode"),
-                view::passcode(&s, &err),
+                view::passcode(&s, &err, st.coach_field),
                 Vec::new(),
                 view::header(None, &st, &s),
             )
@@ -239,6 +245,8 @@ pub fn start(strings_json: &str, glossary_md: &str, today: &str) -> String {
             demo: false,
             offline: false,
             failure: String::new(),
+            coach_field: false,
+            forgetting: false,
         };
         Ok(render(state, hints, Vec::new(), String::new()))
     };
@@ -430,7 +438,20 @@ fn step(mut st: State, name: &str, value: &str) -> Out {
             st.week_offset = 0;
             st.moving = None;
         }
-        "athlete.switch" => st.screen = "who".into(),
+        "athlete.switch" => {
+            st.screen = "who".into();
+            st.forgetting = false;
+        }
+        "passcode.coach" => {
+            st.coach_field = true;
+            st.failure.clear();
+        }
+        "passcode.group" => {
+            st.coach_field = false;
+            st.failure.clear();
+        }
+        "phone.ask" => st.forgetting = true,
+        "phone.keep" => st.forgetting = false,
         "screen.show" => {
             let coach = need_data(&st)?.is_coach();
             let known =

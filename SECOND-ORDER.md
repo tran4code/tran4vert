@@ -44,7 +44,7 @@ Each reader-visible string the agent wrote, with its key, for the person to read
 | `title_cycles` | Cycles |
 | `title_coach` | Coach |
 | `passcode_heading` | Group passcode |
-| `passcode_text` | Type the group passcode. The coach can type the coach passcode alone. This phone remembers it. |
+| `passcode_text` | Type the group passcode. This phone remembers it. |
 | `passcode_group` | Group passcode |
 | `passcode_coach` | Coach passcode |
 | `passcode_enter` | Enter |
@@ -192,7 +192,6 @@ Each reader-visible string the agent wrote, with its key, for the person to read
 | `page_playing` | Playing |
 | `page_play_failed` | The voice note could not be played. |
 | `page_switch` | Switch athlete |
-| `page_forget` | Forget this phone |
 | `page_home_screen` | To fill the screen, choose Share, then Add to Home Screen. |
 | `page_note_missing` | Fill in the lift and the title first. |
 | `page_save_failed` | The voice note could not be saved. |
@@ -225,3 +224,16 @@ Each reader-visible string the agent wrote, with its key, for the person to read
 | `month_12` | Dec |
 | `err_coach_only` | That needs the coach passcode. |
 | `err_server` | The database refused the request. Try again. |
+| `passcode_coach_button` | I'm the coach |
+| `passcode_group_button` | Use the group passcode |
+| `passcode_coach_heading` | Coach passcode |
+| `passcode_coach_text` | Type the coach passcode. It also opens everything an athlete sees. |
+| `phone_heading` | This phone |
+| `phone_text` | This phone remembers the passcode and your name, so you type them once. |
+| `phone_forget` | Forget this phone |
+| `phone_forget_ask` | The passcode and your name are forgotten on this phone, and you start again from the passcode screen. Nothing is deleted from the database. |
+| `phone_forget_yes` | Yes, forget |
+| `phone_keep` | Keep |
+| `max_up` | Up {n} lb from {date} |
+| `max_down` | Down {n} lb from {date} |
+| `max_same` | Same as {date} |

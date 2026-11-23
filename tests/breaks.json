@@ -341,5 +341,26 @@
     "find": "if form.field(\"group\").is_empty() && form.field(\"coach\").is_empty() {",
     "replace": "if form.field(\"group\").is_empty() {",
     "test": "an_empty_passcode_is_refused_and_a_typed_one_becomes_one_request"
+  },
+  {
+    "name": "the coach field is always shown",
+    "file": "crates/core/src/view.rs",
+    "find": "    let (heading, text, field, other) = if coach {",
+    "replace": "    let (heading, text, field, other) = if !coach || coach {",
+    "test": "the_coach_passcode_field_shows_only_when_asked_for_and_can_be_put_away"
+  },
+  {
+    "name": "forgetting happens with no question",
+    "file": "crates/core/src/api.rs",
+    "find": "\"phone.ask\" => st.forgetting = true,",
+    "replace": "\"phone.ask\" => st.forgetting = false,",
+    "test": "forgetting_this_phone_is_asked_about_first_and_is_not_offered_in_the_demo"
+  },
+  {
+    "name": "a max drop is reported as a rise",
+    "file": "crates/core/src/view.rs",
+    "find": "std::cmp::Ordering::Less => \"max_down\",",
+    "replace": "std::cmp::Ordering::Less => \"max_up\",",
+    "test": "the_maxes_screen_says_how_each_max_compares_with_the_one_before"
   }
 ]

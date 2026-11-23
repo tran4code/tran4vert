@@ -222,8 +222,15 @@ def run_engine(p, engine, origin):
     check(page.is_disabled("#max-form button:text-is('Save max')"), "offline, the change buttons are off")
 
     db.up = True
-    page.click("button:text-is('Forget this phone')")
+    page.click("#who button")
+    page.wait_for_selector("body[data-screen='who']", state="attached")
+    page.click("#phone button:text-is('Forget this phone')")
+    check(page.query_selector("#phone button:text-is('Yes, forget')") is not None, "forgetting asks first")
+    page.click("#phone button:text-is('Yes, forget')")
     page.wait_for_selector("body[data-screen='passcode']", state="attached")
+    check(page.query_selector("#passcode-coach") is None, "the coach's field is out of sight on the passcode screen")
+    page.click("#passcode button:text-is(\"I'm the coach\")")
+    check(page.query_selector("#passcode-coach") is not None, "the coach's field shows when asked for")
     check(True, "forgetting this phone brings back the passcode screen")
     check(not errors, f"no console error or page error {errors}")
     check(hosts <= {"mock"}, f"no request left for any other address {hosts}")

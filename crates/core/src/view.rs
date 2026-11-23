@@ -88,15 +88,26 @@ fn choice(value: &str, label: &str) -> Choice {
 
 // ---- passcode and who ----
 
-pub fn passcode(s: &Strings, error: &str) -> Vec<Panel> {
-    let mut p = Panel::new("passcode", "form")
-        .heading(&s.t("passcode_heading"))
-        .text(&s.t("passcode_text"));
-    p.fields = vec![
-        Field::new("group", &s.t("passcode_group"), "password", ""),
-        Field::new("coach", &s.t("passcode_coach"), "password", ""),
-    ];
-    p.actions = vec![Action::new("passcode.submit", "", &s.t("passcode_enter"))];
+pub fn passcode(s: &Strings, error: &str, coach: bool) -> Vec<Panel> {
+    // The coach's passcode stays out of sight until the coach asks for it.
+    let (heading, text, field, other) = if coach {
+        (
+            s.t("passcode_coach_heading"),
+            s.t("passcode_coach_text"),
+            Field::new("coach", &s.t("passcode_coach"), "password", ""),
+            Action::new("passcode.group", "", &s.t("passcode_group_button")),
+        )
+    } else {
+        (
+            s.t("passcode_heading"),
+            s.t("passcode_text"),
+            Field::new("group", &s.t("passcode_group"), "password", ""),
+            Action::new("passcode.coach", "", &s.t("passcode_coach_button")),
+        )
+    };
+    let mut p = Panel::new("passcode", "form").heading(&heading).text(&text);
+    p.fields = vec![field];
+    p.actions = vec![Action::new("passcode.submit", "", &s.t("passcode_enter")), other];
     if !error.is_empty() {
         p.marker = error.to_string();
     }
@@ -116,12 +127,31 @@ pub fn who(st: &State, data: &Data, s: &Strings) -> Vec<Panel> {
         p.rows.push(row);
     }
     let mut panels = vec![p];
+    if !st.demo {
+        panels.push(phone_panel(st, s));
+    }
     if st.demo && !data.is_coach() {
         let mut c = Panel::new("demo-coach", "text").text(&s.t("demo_coach_text"));
         c.actions = vec![Action::new("demo.coach", "", &s.t("demo_coach_button"))];
         panels.push(c);
     }
     panels
+}
+
+/// What this phone keeps, and a way to forget it, asked about before it is done.
+fn phone_panel(st: &State, s: &Strings) -> Panel {
+    let mut p = Panel::new("phone", "text").heading(&s.t("phone_heading"));
+    if st.forgetting {
+        p.text = s.t("phone_forget_ask");
+        p.actions = vec![
+            Action::new("page.forget", "", &s.t("phone_forget_yes")),
+            Action::new("phone.keep", "", &s.t("phone_keep")),
+        ];
+    } else {
+        p.text = s.t("phone_text");
+        p.actions = vec![Action::new("phone.ask", "", &s.t("phone_forget"))];
+    }
+    p
 }
 
 // ---- a session ----
@@ -637,7 +667,7 @@ pub fn maxes_screen(ctx: &Ctx) -> (String, Vec<Panel>) {
             if a.id == ctx.athlete.id {
                 row.marker = s.t("who_current");
             }
-            for m in hist {
+            for (i, m) in hist.iter().enumerate() {
                 let mut h = Row::new(
                     &format!("maxrec-{}", m.id),
                     &s.f(
@@ -645,6 +675,16 @@ pub fn maxes_screen(ctx: &Ctx) -> (String, Vec<Panel>) {
                         &[("weight", &m.weight.to_string()), ("date", &m.date)],
                     ),
                 );
+                // How this max compares with the one before it.
+                if let Some(before) = hist.get(i + 1) {
+                    let n = m.weight.abs_diff(before.weight).to_string();
+                    let key = match m.weight.cmp(&before.weight) {
+                        std::cmp::Ordering::Greater => "max_up",
+                        std::cmp::Ordering::Less => "max_down",
+                        std::cmp::Ordering::Equal => "max_same",
+                    };
+                    h.detail = s.f(key, &[("n", &n), ("date", &before.date)]);
+                }
                 if a.id == ctx.athlete.id || ctx.coach() {
                     h.actions = vec![Action::new("max.delete", &m.id.to_string(), &s.t("max_delete"))];
                 }

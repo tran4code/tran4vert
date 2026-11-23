@@ -165,8 +165,67 @@ fn the_page_starts_on_the_passcode_screen_and_asks_for_nothing_yet() {
         .iter()
         .map(|f| s(&f["name"]))
         .collect();
-    assert_eq!(fields, vec!["group", "coach"]);
+    // The coach's field is out of sight until asked for.
+    assert_eq!(fields, vec!["group"]);
     assert_eq!(p.panel("passcode")["fields"][0]["kind"], "password");
+}
+
+#[test]
+fn the_coach_passcode_field_shows_only_when_asked_for_and_can_be_put_away() {
+    let mut p = Page::open("2026-12-01");
+    assert_eq!(p.panel("passcode")["actions"][1]["name"], "passcode.coach");
+    p.act("passcode.coach", "");
+    let names: Vec<&str> = p.panel("passcode")["fields"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|f| s(&f["name"]))
+        .collect();
+    assert_eq!(names, vec!["coach"]);
+    assert_eq!(p.panel("passcode")["heading"], "Coach passcode");
+    assert_eq!(p.panel("passcode")["actions"][1]["name"], "passcode.group");
+    p.act("passcode.group", "");
+    assert_eq!(p.panel("passcode")["fields"][0]["name"], "group");
+}
+
+#[test]
+fn forgetting_this_phone_is_asked_about_first_and_is_not_offered_in_the_demo() {
+    let mut p = Page::open("2026-12-01");
+    p.act("data.load", &remote("athlete"));
+    assert_eq!(p.ui["screen"], "who");
+    assert_eq!(p.panel("phone")["actions"][0]["name"], "phone.ask");
+    p.act("phone.ask", "");
+    let names: Vec<&str> = p.panel("phone")["actions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|a| s(&a["name"]))
+        .collect();
+    assert_eq!(names, vec!["page.forget", "phone.keep"]);
+    assert!(p.panel("phone")["text"]
+        .as_str()
+        .unwrap()
+        .contains("Nothing is deleted"));
+    p.act("phone.keep", "");
+    assert_eq!(p.panel("phone")["actions"][0]["name"], "phone.ask");
+    let mut d = Page::open("2026-12-01");
+    d.act("demo.start", &read("tests/fixtures/sample_program.json"));
+    assert!(!d.has_panel("phone"));
+}
+
+#[test]
+fn the_maxes_screen_says_how_each_max_compares_with_the_one_before() {
+    let mut p = Page::signed_in("2026-12-01", "athlete", 1);
+    p.act("screen.show", "maxes");
+    // 285 on 2026-10-05, then 305 on 2026-11-02.
+    assert_eq!(p.row("maxrec-2")["detail"], "Up 20 lb from 2026-10-05");
+    assert!(p.row("maxrec-1").get("detail").is_none());
+    let request = json!({"rpc": "add_max", "args": {"athlete": 1, "lift": "anvil_squat", "weight": 295, "date": "2026-11-20"}}).to_string();
+    p.act("data.apply", &request);
+    assert_eq!(p.row("maxrec-6")["detail"], "Down 10 lb from 2026-11-02");
+    let same = json!({"rpc": "add_max", "args": {"athlete": 1, "lift": "anvil_squat", "weight": 295, "date": "2026-11-25"}}).to_string();
+    p.act("data.apply", &same);
+    assert_eq!(p.row("maxrec-7")["detail"], "Same as 2026-11-20");
 }
 
 #[test]
